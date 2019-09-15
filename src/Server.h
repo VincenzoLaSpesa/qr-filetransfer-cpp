@@ -6,7 +6,7 @@ class ConnectionListener;
 
 class Server {
    public:
-    Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &virtual_path = "", bool keep_alive = false);
+    Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &virtual_path = "", bool keep_alive = false, bool allow_upload=false);
     bool WaitForStartup(int timeout_seconds = 5);
     void Wait();
     void Stop(bool wait = true);
@@ -33,4 +33,5 @@ class Server {
     bool started_ = false;
     bool keep_alive_ = false;
     bool stopping_ = false;
+    bool allow_upload_ = false;
 };

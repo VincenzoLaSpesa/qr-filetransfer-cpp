@@ -11,13 +11,14 @@ This is absolutely a work in progress.
 ### Completed features
 -   Serve a single file and close ( desktop to mobile)
 -   Serve a single file and keep the server open ( desktop to mobile)
+-   Upload a file ( from mobile to desktop)
 
 ### TODO ( in order of importance)
--   Doxigen
--   Make the command line interface usable
+-   Less logging on stdout
 -   Specify a custom port
--   Upload a file ( from mobile to desktop)
+-   Get interface names instead of just interfaces addresses
 -   Serve an entire folder (recursively)
+-   Better handling for "post" requests
 -   Create a GUI with (probably) FLTK
 -   Store/load settings
 
@@ -31,6 +32,7 @@ The project depends on:
 - libqrencode (qr code generation)
 - asio (networking abstraction layer)
 - fmt (string interpolation)
+- taywee::args (command line arguments parsing)
 
 You can install it in different ways, the suggested one is vcpkg.
 With vcpkg it's just:
