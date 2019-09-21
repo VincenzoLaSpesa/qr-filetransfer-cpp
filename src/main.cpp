@@ -55,15 +55,18 @@ void printQr(const std::string &url) {
 }
 
 int main(int argc, char **argv) {
-    const unsigned short port = 8080;
+    unsigned short port = 8080;
+    srand(time(NULL));
     std::string file_path;
     //parse the commandline options
     args::ArgumentParser parser("qr-filentransfer-cpp", "");
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::ValueFlag<std::string> served_path(parser, "servedpath", "The path the server will listen to. A random one will be generated if omitted", {'s'});
+    args::ValueFlag<unsigned short> port_number(parser, "port", "The port the server will listen to. A random one will be generated if omitted", {'p'});
     args::Group group(parser);
     args::Flag keep(group, "keep-alive", "keeps server alive, won't shut it down after transfer", {'k', "keep-alive"});
     args::Flag receive(group, "receive", "allows the client to send files", {'r', "receive"});
+    args::Flag verbose(group, "verbose", "print more status messages", {'v', "verbose"});
     args::Positional<std::string> filename(parser, "filename", "file to serve");
     try {
         parser.ParseCLI(argc, argv);
@@ -85,7 +88,13 @@ int main(int argc, char **argv) {
         file_path = filename.Get();
     } else {
         std::cerr << "A filename is needed \n";
+        return -1;
     }
+    if (port_number)
+        port = port_number.Get();
+    else
+        port = (rand() % 49153) + 16382;
+
     auto addr = ChooseInterface();
     fmt::printf("Binding to -> %s\n", addr);
     std::string rand_path;
@@ -97,8 +106,8 @@ int main(int argc, char **argv) {
     std::string path = fmt::sprintf("http://%s:%d/%s", addr, port, rand_path);
     fmt::printf("The served url is -> %s\n", path);
     printQr(path);
-    Server s{addr, port, file_path, rand_path, keep, receive};
+    Server server{addr, port, file_path, rand_path, keep, receive, verbose};
     printf("Server is ready\n");
-    s.Wait();
+    server.Wait();
     return 0;
 }

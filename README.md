@@ -12,10 +12,10 @@ This is absolutely a work in progress.
 -   Serve a single file and close ( desktop to mobile)
 -   Serve a single file and keep the server open ( desktop to mobile)
 -   Upload a file ( from mobile to desktop)
+-   Verbose option
+-   Specify a custom port   
 
 ### TODO ( in order of importance)
--   Less logging on stdout
--   Specify a custom port
 -   Get interface names instead of just interfaces addresses
 -   Serve an entire folder (recursively)
 -   Better handling for "post" requests

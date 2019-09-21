@@ -1,6 +1,7 @@
 #include "Server.h"
 #include "ConnectionListener.h"
 #include "htmldata.hpp"
+#include "CustomLogger.h"
 
 #include <iostream>
 #include <filesystem>
@@ -59,7 +60,7 @@ restinio::request_handling_status_t sendfile(const std::string &file_path, std::
 int poor_man_file_writer(const std::string &file_content, std::string &file_path) {
     std::string file_terminator;
     std::stringstream sstream{file_content, std::ios::binary | std::ios::in};
-	std::getline(sstream, file_terminator,'\r');
+    std::getline(sstream, file_terminator, '\r');
     std::getline(sstream, file_path, '\r');
     std::smatch match;
     static const std::regex rgx("filename=\\\"(\\w+.\\w+)\\\"");
@@ -75,13 +76,13 @@ int poor_man_file_writer(const std::string &file_content, std::string &file_path
     const int offset_start = 1 + sstream.tellg();
     const auto it = std::search(file_content.begin() + offset_start, file_content.end(), file_terminator.c_str(), file_terminator.data() + file_terminator.length());
     const int offset_end = std::distance(file_content.begin(), it);
-    output.open(file_path, std::ios::binary | std::ios::out);   
-	output << file_content.substr(offset_start, offset_end - offset_start - 2);
+    output.open(file_path, std::ios::binary | std::ios::out);
+    output << file_content.substr(offset_start, offset_end - offset_start - 2);
     output.close();
     return 1;
 }
 
-Server::router *Server::make_router(const std::string &served_path, const std::string &randomized_path) {
+Server::router* Server::make_router(const std::string &served_path, const std::string &randomized_path) {
     auto *r = new router();
     std::string path;
     if (randomized_path.size() > 0)
@@ -125,7 +126,7 @@ Server::router *Server::make_router(const std::string &served_path, const std::s
                     .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
                     .set_body("File transferred")
                     .done();
-                std::cout << "File saved in: " << saved_path;
+                GetLogger().info(fmt::sprintf("File saved in %s", saved_path));
                 if (!keep_alive_)
                     InitShutdown();
                 return restinio::request_accepted();
@@ -136,6 +137,7 @@ Server::router *Server::make_router(const std::string &served_path, const std::s
             "/" + path,
             [&](auto req, auto) {
                 auto res = sendfile(served_path, req);
+                GetLogger().info(fmt::sprintf("%s served", served_path));
                 if (!keep_alive_)
                     InitShutdown();
                 return res;
@@ -144,19 +146,18 @@ Server::router *Server::make_router(const std::string &served_path, const std::s
     return r;
 }
 
-Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload) {
+Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload, bool verbose) {
     keep_alive_ = keep_alive;
     allow_upload_ = allow_upload;
     std::unique_ptr<Server::router> r{make_router(served_path, randomized_path)};
     std::shared_ptr<ConnectionListener> connection_listener{new ConnectionListener()};
-    server_.reset(new http_server{
-        restinio::own_io_context(),
-        restinio::server_settings_t<server_traits>{}
-            .port(port)
-            .address(addr)
-            .connection_state_listener(connection_listener)
-            .request_handler(std::move(r))});
-
+    auto settings = restinio::server_settings_t<server_traits>{}
+                        .port(port)
+                        .address(addr)
+                        .connection_state_listener(connection_listener)
+                        .request_handler(std::move(r))
+                        .logger(verbose? LogLevel::Trace : LogLevel::Info, logger_.GetRawLogger());
+    server_.reset(new http_server{restinio::own_io_context(), std::move(settings)});
     runner_.reset(new restinio::on_pool_runner_t<http_server>{
         std::thread::hardware_concurrency(),
         *server_});

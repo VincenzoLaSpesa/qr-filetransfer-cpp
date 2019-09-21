@@ -8,6 +8,7 @@ class ConnectionListener {
     void state_changed(const restinio::connection_state::notice_t &notice) noexcept {
         std::lock_guard<std::mutex> l{m_};
         if (server_ && server_->IsShuttingDown()) {
+            server_->GetLogger().info("Closing the server");
             using namespace restinio::connection_state;
             const auto cause = notice.cause();
             if (restinio::holds_alternative<closed_t>(cause))
