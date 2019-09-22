@@ -4,7 +4,7 @@ project(qr-filetransfer_cpp VERSION LANGUAGES C CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    message(FATAL_ERROR "No toolchain is defined, this could cause issues with vcpkg")
+  message(FATAL_ERROR "No toolchain is defined, this could cause issues with vcpkg")
 else()
 	MESSAGE( STATUS "Using toolchain in ${CMAKE_TOOLCHAIN_FILE} ")
 endif()
@@ -18,18 +18,18 @@ else()
 endif()
 
 MESSAGE( STATUS "Looking for libs ... " )
-	#restinio and its dependencies
-	find_package(unofficial-http-parser REQUIRED)
-	find_package(fmt REQUIRED)
-    find_package(restinio CONFIG REQUIRED)
-	find_package(asio REQUIRED)
-	
-	find_package(args CONFIG REQUIRED)    
-	
-    find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
-    find_library(QRENCODE_LIBRARY_RELEASE qrencode)
-    find_library(QRENCODE_LIBRARY_DEBUG qrencoded)
-    set(QRENCODE_LIBRARIES optimized ${QRENCODE_LIBRARY_RELEASE} debug ${QRENCODE_LIBRARY_DEBUG})	
+  #restinio and its dependencies
+  find_package(unofficial-http-parser REQUIRED)
+  find_package(fmt REQUIRED)
+  find_package(restinio CONFIG REQUIRED)
+  find_package(asio REQUIRED)
+
+  find_package(args CONFIG REQUIRED)    
+
+  find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
+  find_library(QRENCODE_LIBRARY_RELEASE qrencode)
+  find_library(QRENCODE_LIBRARY_DEBUG qrencoded)
+  set(QRENCODE_LIBRARIES optimized ${QRENCODE_LIBRARY_RELEASE} debug ${QRENCODE_LIBRARY_DEBUG})	
 MESSAGE( STATUS "All libs found. " )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

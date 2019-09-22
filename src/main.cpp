@@ -15,7 +15,7 @@ std::string ChooseInterface() {
     unsigned int n = 0;
     std::cout << "Choose a network address by its number \n";
     for (const auto i : interfaces) {
-        fmt::printf("%d -> %s \n", n, i.to_string());
+        fmt::printf("%d -> %s (%s) \n", n, i.address, i.name);
         n++;
     }
     std::cout << "\nInput number: ";

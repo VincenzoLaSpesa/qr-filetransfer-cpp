@@ -14,10 +14,11 @@ This is absolutely a work in progress.
 -   Upload a file ( from mobile to desktop)
 -   Verbose option
 -   Specify a custom port   
+-   Interface names ( on windows)
 
 ### TODO ( in order of importance)
--   Get interface names instead of just interfaces addresses
 -   Serve an entire folder (recursively)
+-   Interface names ( on posix)
 -   Better handling for "post" requests
 -   Create a GUI with (probably) FLTK
 -   Store/load settings
@@ -34,7 +35,7 @@ The project depends on:
 - fmt (string interpolation)
 - taywee::args (command line arguments parsing)
 
-You can install it in different ways, the suggested one is vcpkg.
+You can install the dependencies in different ways, the suggested one is vcpkg.
 With vcpkg it's just:
 
     ./vcpkg install args asio fmt restinio --triplet x64-windows
