@@ -45,7 +45,6 @@ std::vector<NetworkInterface> ListInterfaces() {
 
     for (auto const &imap : container)
         i.push_back(std::move(imap.second));
-    i.push_back(std::move(NetworkInterface{"0.0.0.0", "This host on this network", true, false}));
     i.push_back(std::move(NetworkInterface{"127.0.0.1", "Localhost", true, true}));
 	
 	return std::move(i);

@@ -1,5 +1,8 @@
 #pragma once
 #include <restinio/all.hpp>
+
+namespace QrFileTransfer {
+
 enum class LogLevel { None,
                       Error,
                       Warning,
@@ -71,3 +74,4 @@ class CustomLogger {
     std::shared_ptr<restinio::ostream_logger_t<std::mutex>> logger_;
     LogLevel log_level_;
 };
+}  // namespace QrFileTransfer

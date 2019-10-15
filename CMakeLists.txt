@@ -4,7 +4,7 @@ project(qr-filetransfer_cpp VERSION LANGUAGES C CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  message(FATAL_ERROR "No toolchain is defined, this could cause issues with vcpkg")
+  message(STATUS "No toolchain is defined, this could cause issues with vcpkg")
 else()
 	MESSAGE( STATUS "Using toolchain in ${CMAKE_TOOLCHAIN_FILE} ")
 endif()

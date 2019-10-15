@@ -1,4 +1,4 @@
-add_executable(QrFiletransfer main.cpp Server.cpp Server.h htmldata.hpp ConnectionListener.h CustomLogger.h)
+add_executable(QrFiletransfer main.cpp Server.cpp Server.h htmldata.hpp Connections.h Connections.cpp CustomLogger.h)
 set_target_properties(QrFiletransfer PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin/Debug")
 target_link_libraries(QrFiletransfer PRIVATE restinio::restinio) 
 target_link_libraries(QrFiletransfer PRIVATE fmt::fmt-header-only)

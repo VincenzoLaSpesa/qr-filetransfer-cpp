@@ -20,6 +20,7 @@ This is absolutely a work in progress.
 -   Serve an entire folder (recursively)
 -   Interface names ( on posix)
 -   Better handling for "post" requests
+-   Full static linking
 -   Create a GUI with (probably) FLTK
 -   Store/load settings
 

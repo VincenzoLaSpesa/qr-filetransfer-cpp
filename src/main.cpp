@@ -15,7 +15,7 @@ std::string ChooseInterface() {
     unsigned int n = 0;
     std::cout << "Choose a network address by its number \n";
     for (const auto i : interfaces) {
-        fmt::printf("%d -> %s (%s) \n", n, i.address, i.name);
+        fmt::printf(" %d -> %s (%s) \n", n, i.address, i.name);
         n++;
     }
     std::cout << "\nInput number: ";
@@ -56,7 +56,7 @@ void printQr(const std::string &url) {
 
 int main(int argc, char **argv) {
     unsigned short port = 8080;
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     std::string file_path;
     //parse the commandline options
     args::ArgumentParser parser("qr-filentransfer-cpp", "");
@@ -88,6 +88,7 @@ int main(int argc, char **argv) {
         file_path = filename.Get();
     } else {
         std::cerr << "A filename is needed \n";
+        std::cout << parser;
         return -1;
     }
     if (port_number)
@@ -106,7 +107,7 @@ int main(int argc, char **argv) {
     std::string path = fmt::sprintf("http://%s:%d/%s", addr, port, rand_path);
     fmt::printf("The served url is -> %s\n", path);
     printQr(path);
-    Server server{addr, port, file_path, rand_path, keep, receive, verbose};
+    QrFileTransfer::Server server{addr, port, file_path, rand_path, keep, receive, verbose};
     printf("Server is ready\n");
     server.Wait();
     return 0;

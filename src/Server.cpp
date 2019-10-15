@@ -1,5 +1,5 @@
 #include "Server.h"
-#include "ConnectionListener.h"
+#include "Connections.h"
 #include "htmldata.hpp"
 #include "CustomLogger.h"
 
@@ -9,6 +9,8 @@
 #include <thread>
 #include <fstream>
 #include <fmt/printf.h>
+
+std::shared_ptr<QrFileTransfer::ConnectionTimeoutController> QrFileTransfer::ConnectionTimeoutManagerFactory::timeout_controller_ = nullptr;
 
 std::uint64_t filesize(const std::string &filename) {
     std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
@@ -24,13 +26,15 @@ RESP init_resp(RESP resp) {
     return resp;
 }
 
-restinio::request_handling_status_t sendfile(const std::string &file_path, std::shared_ptr<restinio::request_t> request) {
+restinio::request_handling_status_t sendfile(const std::string &file_path, std::shared_ptr<restinio::request_t> request, float minimum_speed_kBs) {
     try {
-        restinio::file_offset_t m_data_offset{0};
-        restinio::file_size_t m_data_size{filesize(file_path)};
-
-        auto sf = restinio::sendfile(file_path);
+        const auto file_size = filesize(file_path);
+        const unsigned long time = static_cast<unsigned long>(((float)file_size) / (1.024 * minimum_speed_kBs));  // the time needed for downloading with an average speed of minimum_speed_kBs
+		restinio::file_offset_t m_data_offset{0};        
+		restinio::file_size_t m_data_size{file_size};        
+		restinio::sendfile_t sf = restinio::sendfile(file_path);
         sf.offset_and_size(m_data_offset, m_data_size);
+        sf.timelimit(std::chrono::milliseconds(time));
 
         return init_resp(request->create_response())
             .append_header_date_field()
@@ -47,6 +51,7 @@ restinio::request_handling_status_t sendfile(const std::string &file_path, std::
     return restinio::request_rejected();
 }
 
+using namespace QrFileTransfer;
 /**
  * @brief Handle a file upload request
  * 
@@ -55,9 +60,10 @@ restinio::request_handling_status_t sendfile(const std::string &file_path, std::
  * 
  * @param file_content the whole request as a string
  * @param file_path the path where the file will be saved
+ * @param minimum_speed_kBs the speed used for calculating the timeout
  * @return int 
  */
-int poor_man_file_writer(const std::string &file_content, std::string &file_path) {
+int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
     std::string file_terminator;
     std::stringstream sstream{file_content, std::ios::binary | std::ios::in};
     std::getline(sstream, file_terminator, '\r');
@@ -73,10 +79,12 @@ int poor_man_file_writer(const std::string &file_content, std::string &file_path
     std::ofstream output;
     std::getline(sstream, line_buffer, '\r');
     std::getline(sstream, line_buffer, '\r');
-    const int offset_start = 1 + sstream.tellg();
+    const auto offset_start = 1 + sstream.tellg();
     const auto it = std::search(file_content.begin() + offset_start, file_content.end(), file_terminator.c_str(), file_terminator.data() + file_terminator.length());
-    const int offset_end = std::distance(file_content.begin(), it);
-    output.open(file_path, std::ios::binary | std::ios::out);
+    const auto offset_end = std::distance(file_content.begin(), it);
+    const float time = (offset_end - offset_start) / (1024 * minimum_speed_kBs);  // the time needed for downloading with an average speed of minimum_speed_kBs
+    connection_timeout_controller_->ProtectConnection(c_id, time);
+	output.open(file_path, std::ios::binary | std::ios::out);
     output << file_content.substr(offset_start, offset_end - offset_start - 2);
     output.close();
     return 1;
@@ -118,8 +126,8 @@ Server::router* Server::make_router(const std::string &served_path, const std::s
                 const std::string ctype = req->header().get_field_or("Content-Type", "");
                 if (ctype.find("multipart/form-data;") != 0)
                     return restinio::request_rejected();
-                std::string saved_path;
-                if (poor_man_file_writer(req->body(), saved_path) < 0) {
+                std::string saved_path;                
+                if (poor_man_file_writer(req->body(), saved_path, req->connection_id()) < 0) {
                     return restinio::request_rejected();
                 };
                 init_resp(req->create_response())
@@ -136,7 +144,7 @@ Server::router* Server::make_router(const std::string &served_path, const std::s
         r->http_get(
             "/" + path,
             [&](auto req, auto) {
-                auto res = sendfile(served_path, req);
+                auto res = sendfile(served_path, req, 10);
                 GetLogger().info(fmt::sprintf("%s served", served_path));
                 if (!keep_alive_)
                     InitShutdown();
@@ -149,18 +157,21 @@ Server::router* Server::make_router(const std::string &served_path, const std::s
 Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload, bool verbose) {
     keep_alive_ = keep_alive;
     allow_upload_ = allow_upload;
-    std::unique_ptr<Server::router> r{make_router(served_path, randomized_path)};
-    std::shared_ptr<ConnectionListener> connection_listener{new ConnectionListener()};
+    connection_timeout_controller_.reset(new ConnectionTimeoutController());
+    ConnectionTimeoutManagerFactory::SetTimeoutController(connection_timeout_controller_);
+	std::unique_ptr<Server::router> r{make_router(served_path, randomized_path)};
+    std::shared_ptr<ConnectionListener> connection_listener{new ConnectionListener(connection_timeout_controller_)};
     auto settings = restinio::server_settings_t<server_traits>{}
                         .port(port)
                         .address(addr)
                         .connection_state_listener(connection_listener)
                         .request_handler(std::move(r))
-                        .logger(verbose? LogLevel::Trace : LogLevel::Info, logger_.GetRawLogger());
-    server_.reset(new http_server{restinio::own_io_context(), std::move(settings)});
+                        .concurrent_accepts_count(10)
+                        .logger(verbose ? LogLevel::Trace : LogLevel::Info, logger_.GetRawLogger());    
+	restinio_server_.reset(new http_server{restinio::own_io_context(), std::move(settings)});
     runner_.reset(new restinio::on_pool_runner_t<http_server>{
         std::thread::hardware_concurrency(),
-        *server_});
+        *restinio_server_});
     runner_->start();
     connection_listener->set_server(this);
     started_ = WaitForStartup();
@@ -170,7 +181,7 @@ bool Server::WaitForStartup(int timeout_seconds) {
     using namespace std::chrono_literals;
     int waited = 0;
     while (waited < timeout_seconds) {
-        if (server_ != nullptr && runner_ != nullptr && runner_->started())
+        if (restinio_server_ != nullptr && runner_ != nullptr && runner_->started())
             return true;
         std::this_thread::sleep_for(1s);
         waited++;
