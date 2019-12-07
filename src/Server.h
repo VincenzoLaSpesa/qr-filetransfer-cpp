@@ -48,6 +48,10 @@ class ConnectionTimeoutController {
     std::map<uint64_t, std::chrono::time_point<std::chrono::system_clock>> delayed_connections_;
 };
 
+/**
+ * @brief the Server, the only interface to restinio used in the application
+ * Holds togheter a restinio::router, a http_server and all the accessory objects.
+ */
 class Server {
    public:
     Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &virtual_path = "", bool keep_alive = false, bool allow_upload = false, bool verbose = false);
@@ -72,6 +76,8 @@ class Server {
     using http_server = restinio::http_server_t<server_traits>;
 
     router *make_router(const std::string &served_path, const std::string &virtual_path = "");
+    
+	[[deprecated("To be handled by restinio")]]
     int poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs = 10);
 
     std::unique_ptr<http_server> restinio_server_;

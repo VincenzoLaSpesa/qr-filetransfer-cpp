@@ -4,6 +4,11 @@
 
 namespace QrFileTransfer {
 
+/**
+ * @brief Connects a ConnectionTimeoutController to a restinio server
+ * Implements Traits::connection_state_listener_t, can be used to pass a state listener to restinio.
+ * It is used to allow a ConnectionTimeoutController to interact with restinio
+ */
 class ConnectionListener {
    public:
     ConnectionListener(std::shared_ptr<ConnectionTimeoutController> c) {
@@ -35,11 +40,6 @@ class ConnectionListener {
 
 class ConnectionTimeoutManagerChecker {
    public:
-    /*ConnectionTimeoutManagerChecker( @TODO cut this
-        restinio::asio_ns::io_context &io_context,
-        std::chrono::steady_clock::duration check_period) noexcept
-        : operation_timer_{io_context}, check_period_{check_period} {}*/
-
     ConnectionTimeoutManagerChecker(
         restinio::asio_ns::io_context &io_context,
         std::chrono::steady_clock::duration check_period,
