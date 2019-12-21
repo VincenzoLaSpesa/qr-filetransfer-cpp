@@ -9,11 +9,14 @@
 #include <thread>
 #include <fstream>
 #include <fmt/printf.h>
+#include <restinio/helpers/file_upload.hpp>
 
 std::shared_ptr<QrFileTransfer::ConnectionTimeoutController> QrFileTransfer::ConnectionTimeoutManagerFactory::timeout_controller_ = nullptr;
 
 std::uint64_t filesize(const std::string &filename) {
     std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+    if (!in.good())
+        return 0;
     return static_cast<std::uint64_t>(in.tellg());
 }
 
@@ -29,12 +32,14 @@ RESP init_resp(RESP resp) {
 restinio::request_handling_status_t sendfile(const std::string &file_path, std::shared_ptr<restinio::request_t> request, float minimum_speed_kBs) {
     try {
         const auto file_size = filesize(file_path);
-        const unsigned long time = static_cast<unsigned long>(((float)file_size) / (1.024 * minimum_speed_kBs));  // the time needed for downloading with an average speed of minimum_speed_kBs
+        if (file_size == 0)
+            return restinio::request_rejected();
+        const float timeout_seconds = (((float)file_size) / (1024 * minimum_speed_kBs));  // the time needed for downloading with an average speed of minimum_speed_kBs
 		restinio::file_offset_t m_data_offset{0};        
 		restinio::file_size_t m_data_size{file_size};        
 		restinio::sendfile_t sf = restinio::sendfile(file_path);
         sf.offset_and_size(m_data_offset, m_data_size);
-        sf.timelimit(std::chrono::milliseconds(time));
+        sf.timelimit(std::chrono::milliseconds((unsigned long)(timeout_seconds*1000)));
 
         return init_resp(request->create_response())
             .append_header_date_field()
@@ -52,17 +57,14 @@ restinio::request_handling_status_t sendfile(const std::string &file_path, std::
 }
 
 using namespace QrFileTransfer;
-/**
- * @brief Handle a file upload request
- * 
- * This is a very dirty implementation. There is not much point in optimizing it here as this should be handled 
- * on a lower level by restinio. 
- * 
- * @param file_content the whole request as a string
- * @param file_path the path where the file will be saved
- * @param minimum_speed_kBs the speed used for calculating the timeout
- * @return int 
- */
+
+void store_file_to_disk(const std::string &file_path, restinio::string_view_t file_name, restinio::string_view_t raw_content) {
+    std::ofstream dest_file;
+    dest_file.exceptions(std::ofstream::failbit);
+    dest_file.open(fmt::format("{}/{}", file_path, file_name), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+    dest_file.write(raw_content.data(), raw_content.size());
+}
+
 int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
     std::string file_terminator;
     std::stringstream sstream{file_content, std::ios::binary | std::ios::in};
@@ -89,6 +91,39 @@ int Server::poor_man_file_writer(const std::string &file_content, std::string &f
     output.close();
     return 1;
 }
+
+int file_writer(const std::string &file_content, const std::string &file_path) {
+    std::string line_buffer;
+    std::ofstream output;
+    output.open(file_path, std::ios::binary | std::ios::out);
+    output << file_content;
+    output.close();
+    return file_content.length();
+}
+
+bool QrFileTransfer::Server::file_save(const std::string &file_folder, const restinio::request_t &req) {
+    const auto enumeration_result = restinio::file_upload::enumerate_parts_with_files(req, [&file_folder](const restinio::file_upload::part_description_t &part) {
+        if ("file" == part.name) {
+            // We can handle the name only in 'filename' parameter.
+            if (part.filename) {
+                // NOTE: the validity of filename is not checked.
+                // This is just for simplification of the example.
+                store_file_to_disk(file_folder, *part.filename, part.body);
+
+                // There is no need to handle other parts.
+                return restinio::file_upload::handling_result_t::stop_enumeration;
+            }
+        }
+        return restinio::file_upload::handling_result_t::terminate_enumeration;
+    });
+
+	if (!enumeration_result || 1u != *enumeration_result)
+        return false;	
+	return true;
+}
+
+//restinio::expected_t<size_t, restinio::file_upload::enumeration_error_t> file_writer(const std::string &file_folder, const restinio::file_upload::part_description_t &part
+
 
 Server::router* Server::make_router(const std::string &served_path, const std::string &randomized_path) {
     auto *r = new router();
@@ -144,7 +179,7 @@ Server::router* Server::make_router(const std::string &served_path, const std::s
         r->http_get(
             "/" + path,
             [&](auto req, auto) {
-                auto res = sendfile(served_path, req, 10);
+                auto res = sendfile(served_path, req, 100);
                 GetLogger().info(fmt::sprintf("%s served", served_path));
                 if (!keep_alive_)
                     InitShutdown();

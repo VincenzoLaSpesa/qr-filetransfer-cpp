@@ -2,6 +2,7 @@
 #include <fmt/printf.h>
 #include <args.hxx>
 #include <asio.hpp>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <qrencode.h>
@@ -85,7 +86,12 @@ int main(int argc, char **argv) {
     }
     if (filename) {
         std::cout << filename.Get() << " will be served" << std::endl;
-        file_path = filename.Get();
+        file_path = filename.Get();        
+        if (!std::experimental::filesystem::exists(file_path)) {
+            const auto abspath = std::experimental::filesystem::absolute(file_path);
+            std::cerr << "The file '" << abspath << "' does not exist or it's impossible to open" << std::endl;
+            return -4;        
+		}
     } else {
         std::cerr << "A filename is needed \n";
         std::cout << parser;
