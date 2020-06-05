@@ -35,11 +35,11 @@ restinio::request_handling_status_t sendfile(const std::string &file_path, std::
         if (file_size == 0)
             return restinio::request_rejected();
         const float timeout_seconds = (((float)file_size) / (1024 * minimum_speed_kBs));  // the time needed for downloading with an average speed of minimum_speed_kBs
-		restinio::file_offset_t m_data_offset{0};        
-		restinio::file_size_t m_data_size{file_size};        
-		restinio::sendfile_t sf = restinio::sendfile(file_path);
+        restinio::file_offset_t m_data_offset{0};
+        restinio::file_size_t m_data_size{file_size};
+        restinio::sendfile_t sf = restinio::sendfile(file_path);
         sf.offset_and_size(m_data_offset, m_data_size);
-        sf.timelimit(std::chrono::milliseconds((unsigned long)(timeout_seconds*1000)));
+        sf.timelimit(std::chrono::milliseconds((unsigned long)(timeout_seconds * 1000)));
 
         return init_resp(request->create_response())
             .append_header_date_field()
@@ -65,7 +65,7 @@ void store_file_to_disk(const std::string &file_path, restinio::string_view_t fi
     dest_file.write(raw_content.data(), raw_content.size());
 }
 
-/*int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
+int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
     std::string file_terminator;
     std::stringstream sstream{file_content, std::ios::binary | std::ios::in};
     std::getline(sstream, file_terminator, '\r');
@@ -86,11 +86,11 @@ void store_file_to_disk(const std::string &file_path, restinio::string_view_t fi
     const auto offset_end = std::distance(file_content.begin(), it);
     const float time = (offset_end - offset_start) / (1024 * minimum_speed_kBs);  // the time needed for downloading with an average speed of minimum_speed_kBs
     connection_timeout_controller_->ProtectConnection(c_id, time);
-	output.open(file_path, std::ios::binary | std::ios::out);
+    output.open(file_path, std::ios::binary | std::ios::out);
     output << file_content.substr(offset_start, offset_end - offset_start - 2);
     output.close();
     return 1;
-}*/
+}
 
 size_t file_writer(const std::string &file_content, const std::string &file_path) {
     std::string line_buffer;
@@ -105,79 +105,74 @@ bool QrFileTransfer::Server::file_save(const std::string &file_folder, const res
     const auto enumeration_result = restinio::file_upload::enumerate_parts_with_files(req, [&file_folder](const restinio::file_upload::part_description_t &part) {
         if ("file" == part.name) {
             if (part.filename) {
-				store_file_to_disk(file_folder, *part.filename, part.body);
+                store_file_to_disk(file_folder, *part.filename, part.body);
                 return restinio::file_upload::handling_result_t::stop_enumeration;
             }
         }
         return restinio::file_upload::handling_result_t::terminate_enumeration;
     });
 
-	if (!enumeration_result || 1u != *enumeration_result)
-        return false;	
-	return true;
+    if (!enumeration_result || 1u != *enumeration_result)
+        return false;
+    return true;
 }
 
 
-Server::router* Server::make_router(const std::string &served_path, const std::string &randomized_path) {
+//! Contains any non trivial handler used by the router ( for avoiding huge lambdas )
+struct Handlers {
+    static restinio::request_handling_status_t http_post_upload(const restinio::request_handle_t &req, const restinio::router::route_params_t &params, Server *caller, bool keep_alive) {
+		const std::string ctype = req->header().get_field_or("Content-Type", "");
+        if (ctype.find("multipart/form-data;") != 0)
+            return restinio::request_rejected();
+        std::string saved_path;		
+        if (caller->poor_man_file_writer(req->body(), saved_path, req->connection_id()) < 0) {
+            return restinio::request_rejected();
+        };
+        init_resp(req->create_response())
+            .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
+            .set_body("File transferred")
+            .done();
+        caller->GetLogger().info(fmt::sprintf("File saved in %s", saved_path));
+        if (!keep_alive)
+            caller->InitShutdown();
+        return restinio::request_accepted();
+    }
+
+    static restinio::request_handling_status_t http_get_basic(const restinio::request_handle_t &req, const std::string &body){
+        init_resp(req->create_response())
+            .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
+            .set_body(body)
+            .done();
+
+        return restinio::request_accepted();	
+	};
+
+    static restinio::request_handling_status_t http_get_file(const restinio::request_handle_t &req, Server *caller, bool keep_alive, const std::string &served_path) {
+            auto res = sendfile(served_path, req, 100);
+            caller->GetLogger().info(fmt::sprintf("%s served", served_path));
+            if (!keep_alive)
+                caller->InitShutdown();
+            return res;
+    };
+};
+
+Server::router *Server::make_router(const std::string &served_path, const std::string &randomized_path) {
     auto *r = new router();
     std::string path;
     if (randomized_path.size() > 0)
         path.append(randomized_path);
     else
         path = std::experimental::filesystem::path(served_path).filename().u8string();
-    r->http_get(
-        "/",
-        [](auto req, auto) {
-            init_resp(req->create_response())
-                .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
-                .set_body("This is qr-filetransfer_cpp")
-                .done();
-
-            return restinio::request_accepted();
-        });
+    
+	r->http_get("/", [](auto req, auto) {return Handlers::http_get_basic(req, "This is qr-filetransfer_cpp");});
     if (allow_upload_) {
         fmt::printf("%s:%d : Upload allowed on %s \n", __FILE__, __LINE__, path);
         static std::string static_html = fmt::format(html, randomized_path);
-        r->http_get(
-            "/" + path,
-            [&](auto req, auto) {
-                init_resp(req->create_response())
-                    .append_header(restinio::http_field::content_type, "text/html; charset=utf-8")
-                    .set_body(static_html)
-                    .done();
-
-                return restinio::request_accepted();
-            });
-        r->http_post(
-            "/upload/" + path,
-            [&](restinio::request_handle_t req, restinio::router::route_params_t params) {
-                const std::string ctype = req->header().get_field_or("Content-Type", "");
-                if (ctype.find("multipart/form-data;") != 0)
-                    return restinio::request_rejected();
-                std::string saved_path;                
-                if (poor_man_file_writer(req->body(), saved_path, req->connection_id()) < 0) {
-                    return restinio::request_rejected();
-                };
-                init_resp(req->create_response())
-                    .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
-                    .set_body("File transferred")
-                    .done();
-                GetLogger().info(fmt::sprintf("File saved in %s", saved_path));
-                if (!keep_alive_)
-                    InitShutdown();
-                return restinio::request_accepted();
-            });
+        r->http_get("/" + path,[&](auto req, auto) {return Handlers::http_get_basic(req, static_html);});
+        r->http_post("/upload/" + path,[&](auto req, auto params) { return Handlers::http_post_upload(req, params, this, keep_alive_); });
     } else {
         fmt::printf("%s:%d : %s -> %s", __FILE__, __LINE__, served_path, path);
-        r->http_get(
-            "/" + path,
-            [&](auto req, auto) {
-                auto res = sendfile(served_path, req, 100);
-                GetLogger().info(fmt::sprintf("%s served", served_path));
-                if (!keep_alive_)
-                    InitShutdown();
-                return res;
-            });
+        r->http_get("/" + path, [&](auto req, auto) {return Handlers::http_get_file(req, this, keep_alive_, served_path);});
     }
     return r;
 }
@@ -187,7 +182,7 @@ Server::Server(const std::string &addr, unsigned short port, const std::string &
     allow_upload_ = allow_upload;
     connection_timeout_controller_.reset(new ConnectionTimeoutController());
     ConnectionTimeoutManagerFactory::SetTimeoutController(connection_timeout_controller_);
-	std::unique_ptr<Server::router> r{make_router(served_path, randomized_path)};
+    std::unique_ptr<Server::router> r{make_router(served_path, randomized_path)};
     std::shared_ptr<ConnectionListener> connection_listener{new ConnectionListener(connection_timeout_controller_)};
     auto settings = restinio::server_settings_t<server_traits>{}
                         .port(port)
@@ -195,8 +190,8 @@ Server::Server(const std::string &addr, unsigned short port, const std::string &
                         .connection_state_listener(connection_listener)
                         .request_handler(std::move(r))
                         .concurrent_accepts_count(10)
-                        .logger(verbose ? LogLevel::Trace : LogLevel::Info, logger_.GetRawLogger());    
-	restinio_server_.reset(new http_server{restinio::own_io_context(), std::move(settings)});
+                        .logger(verbose ? LogLevel::Trace : LogLevel::Info, logger_.GetRawLogger());
+    restinio_server_.reset(new http_server{restinio::own_io_context(), std::move(settings)});
     runner_.reset(new restinio::on_pool_runner_t<http_server>{
         std::thread::hardware_concurrency(),
         *restinio_server_});
