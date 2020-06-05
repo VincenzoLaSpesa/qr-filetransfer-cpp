@@ -2,7 +2,7 @@
 
 Transfer files over Wi-Fi from your computer to a mobile device by scanning a QR code.
 
-This repository is inspired by [Claudio d'Angelis's qr-filetransfer](https://github.com/claudiodangelis/qr-filetransfer), but also adds a simple gui and it can server entire folders without zipping them to a single file.
+This repository is inspired by [Claudio d'Angelis's qr-filetransfer](https://github.com/claudiodangelis/qr-filetransfer), but also adds a simple gui and it can serve entire folders without zipping them to a single file.
 
 ## State of the project:
 
@@ -39,7 +39,7 @@ The project depends on:
 You can install the dependencies in different ways, the suggested one is vcpkg.
 With vcpkg it's just:
 
-    ./vcpkg install args asio fmt restinio --triplet x64-windows
+    ./vcpkg.exe install args asio fmt restinio libqrencode --triplet x64-windows
 
 Remember to specify the correct system with the correct architecture. CMake is very picky even for headers only libraries.
 
@@ -76,6 +76,11 @@ The tool prints a QR code that encodes the text:
     http://{address}:{port}/{random_path}
 
 Most QR apps can detect URLs in decoded text and act accordingly (i.e. open the decoded URL with the default browser), so when the QR code is scanned the content will begin downloading by the mobile browser.
+
+## Why?
+
+From time to time i try to build someting in C++ from scratch for experimenting with the newest features of the language, newer library, newer build systems.
+I usually end up thinking that it is till a mess.
 
 ## License
 

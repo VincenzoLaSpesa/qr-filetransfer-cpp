@@ -65,7 +65,7 @@ void store_file_to_disk(const std::string &file_path, restinio::string_view_t fi
     dest_file.write(raw_content.data(), raw_content.size());
 }
 
-int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
+/*int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
     std::string file_terminator;
     std::stringstream sstream{file_content, std::ios::binary | std::ios::in};
     std::getline(sstream, file_terminator, '\r');
@@ -90,9 +90,9 @@ int Server::poor_man_file_writer(const std::string &file_content, std::string &f
     output << file_content.substr(offset_start, offset_end - offset_start - 2);
     output.close();
     return 1;
-}
+}*/
 
-int file_writer(const std::string &file_content, const std::string &file_path) {
+size_t file_writer(const std::string &file_content, const std::string &file_path) {
     std::string line_buffer;
     std::ofstream output;
     output.open(file_path, std::ios::binary | std::ios::out);
@@ -104,13 +104,8 @@ int file_writer(const std::string &file_content, const std::string &file_path) {
 bool QrFileTransfer::Server::file_save(const std::string &file_folder, const restinio::request_t &req) {
     const auto enumeration_result = restinio::file_upload::enumerate_parts_with_files(req, [&file_folder](const restinio::file_upload::part_description_t &part) {
         if ("file" == part.name) {
-            // We can handle the name only in 'filename' parameter.
             if (part.filename) {
-                // NOTE: the validity of filename is not checked.
-                // This is just for simplification of the example.
-                store_file_to_disk(file_folder, *part.filename, part.body);
-
-                // There is no need to handle other parts.
+				store_file_to_disk(file_folder, *part.filename, part.body);
                 return restinio::file_upload::handling_result_t::stop_enumeration;
             }
         }
@@ -121,8 +116,6 @@ bool QrFileTransfer::Server::file_save(const std::string &file_folder, const res
         return false;	
 	return true;
 }
-
-//restinio::expected_t<size_t, restinio::file_upload::enumeration_error_t> file_writer(const std::string &file_folder, const restinio::file_upload::part_description_t &part
 
 
 Server::router* Server::make_router(const std::string &served_path, const std::string &randomized_path) {
