@@ -1,0 +1,16 @@
+[requires]
+	asio/1.21.0
+	fmt/8.1.1
+	restinio/0.6.9
+#	args-parser/6.2.0.1
+	libqrencode/4.1.1
+	taywee-args/6.3.0
+
+[options]
+	restinio:with_openssl=False
+	restinio:asio=standalone
+
+[generators]
+	cmake
+	cmake_find_package
+#	cmake_paths

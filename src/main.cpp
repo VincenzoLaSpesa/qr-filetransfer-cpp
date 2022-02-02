@@ -86,9 +86,9 @@ int main(int argc, char **argv) {
     }
     if (filename) {
         std::cout << filename.Get() << " will be served" << std::endl;
-        file_path = filename.Get();        
-        if (!std::experimental::filesystem::exists(file_path)) {
-            const auto abspath = std::experimental::filesystem::absolute(file_path);
+        file_path = filename.Get();
+        if (!std::filesystem::exists(file_path)) {
+            const auto abspath = std::filesystem::absolute(file_path);
             std::cerr << "The file '" << abspath << "' does not exist or it's impossible to open" << std::endl;
             return -4;        
 		}
