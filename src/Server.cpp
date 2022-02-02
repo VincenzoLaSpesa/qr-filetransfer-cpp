@@ -63,6 +63,7 @@ void store_file_to_disk(const std::string &file_path, restinio::string_view_t fi
     dest_file.exceptions(std::ofstream::failbit);
     dest_file.open(fmt::format("{}/{}", file_path, file_name), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
     dest_file.write(raw_content.data(), raw_content.size());
+    dest_file.close();
 }
 
 int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
@@ -101,17 +102,20 @@ size_t file_writer(const std::string &file_content, const std::string &file_path
     return file_content.length();
 }
 
-bool QrFileTransfer::Server::file_save(const std::string &file_folder, const restinio::request_t &req) {
-    const auto enumeration_result = restinio::file_upload::enumerate_parts_with_files(req, [&file_folder](const restinio::file_upload::part_description_t &part) {
-        if ("file" == part.name) {
-            if (part.filename) {
-                store_file_to_disk(file_folder, *part.filename, part.body);
-                return restinio::file_upload::handling_result_t::stop_enumeration;
-            }
-        }
-        return restinio::file_upload::handling_result_t::terminate_enumeration;
-    });
+bool QrFileTransfer::Server::File_save(const std::string &file_folder, const restinio::request_handle_t &req) {
+    using namespace restinio::file_upload;
 
+    const auto enumeration_result = enumerate_parts_with_files(
+        *req,
+        [&file_folder](const part_description_t &part) {
+            if ("file" == part.name || "files" == part.name) {
+                if (part.filename) {                    
+					store_file_to_disk(file_folder, *part.filename, part.body);
+                    return handling_result_t::stop_enumeration;
+                }
+            }
+            return handling_result_t::terminate_enumeration;
+        });
     if (!enumeration_result || 1u != *enumeration_result)
         return false;
     return true;
@@ -124,8 +128,12 @@ struct Handlers {
 		const std::string ctype = req->header().get_field_or("Content-Type", "");
         if (ctype.find("multipart/form-data;") != 0)
             return restinio::request_rejected();
-        std::string saved_path;		
-        if (caller->poor_man_file_writer(req->body(), saved_path, req->connection_id()) < 0) {
+        std::string saved_path="./"; //@TODO allowing the client to set the filename could be a bad idea
+        if (Server::File_save(saved_path, req))
+            return restinio::request_accepted();
+        return restinio::request_rejected();
+        
+/*        if (caller->poor_man_file_writer(req->body(), saved_path, req->connection_id()) < 0) {
             return restinio::request_rejected();
         };
         init_resp(req->create_response())
@@ -135,12 +143,12 @@ struct Handlers {
         caller->GetLogger().info(fmt::sprintf("File saved in %s", saved_path));
         if (!keep_alive)
             caller->InitShutdown();
-        return restinio::request_accepted();
+        return restinio::request_accepted();*/
     }
 
-    static restinio::request_handling_status_t http_get_basic(const restinio::request_handle_t &req, const std::string &body){
+    static restinio::request_handling_status_t http_get_basic(const restinio::request_handle_t &req, const std::string &body, const std::string& content_type){
         init_resp(req->create_response())
-            .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
+            .append_header(restinio::http_field::content_type, content_type)
             .set_body(body)
             .done();
 
@@ -164,11 +172,11 @@ Server::router *Server::make_router(const std::string &served_path, const std::s
     else
         path = std::experimental::filesystem::path(served_path).filename().u8string();
     
-	r->http_get("/", [](auto req, auto) {return Handlers::http_get_basic(req, "This is qr-filetransfer_cpp");});
+	r->http_get("/", [](auto req, auto) { return Handlers::http_get_basic(req, "This is qr-filetransfer_cpp", "text/plain; charset=utf-8"); });
     if (allow_upload_) {
         fmt::printf("%s:%d : Upload allowed on %s \n", __FILE__, __LINE__, path);
         static std::string static_html = fmt::format(html, randomized_path);
-        r->http_get("/" + path,[&](auto req, auto) {return Handlers::http_get_basic(req, static_html);});
+        r->http_get("/" + path, [&](auto req, auto) { return Handlers::http_get_basic(req, static_html, "text/html; charset=utf-8"); });
         r->http_post("/upload/" + path,[&](auto req, auto params) { return Handlers::http_post_upload(req, params, this, keep_alive_); });
     } else {
         fmt::printf("%s:%d : %s -> %s", __FILE__, __LINE__, served_path, path);

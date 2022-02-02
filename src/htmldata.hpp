@@ -15,7 +15,7 @@ const char *html = R"MULTILINE(
 		Files to transfer
 	</label>
 	<input class="form-control-file" type="file" name="files" id="files" multiple>
-	<br/>
+	<br/>.<br/>
 	<input class="btn btn-primary form-control form-control-lg" type="submit" name="submit" value="Transfer">
 	</form>
 </body>

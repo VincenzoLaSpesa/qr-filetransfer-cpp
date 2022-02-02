@@ -63,19 +63,7 @@ class Server {
     CustomLogger &GetLogger() { return logger_; };
     ~Server();
 
-	/**
-	 * @brief Handle a file upload request
-	 * 
-	 * This is a very dirty implementation. There is not much point in optimizing it here as this should be handled 
-	 * on a lower level by restinio. 
-	 * 
-	 * @param file_content the whole request as a string
-	 * @param file_path the path where the file will be saved
-	 * @param minimum_speed_kBs the speed used for calculating the timeout
-	 * @return int 
-	 */
-	[[deprecated("To be handled by restinio")]]    
-	int poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs = 10);
+    static bool File_save(const std::string &file_folder, const restinio::request_handle_t &req);
    private:
     using router = restinio::router::express_router_t<restinio::router::std_regex_engine_t>;
 
@@ -91,8 +79,6 @@ class Server {
     router *make_router(const std::string &served_path, const std::string &virtual_path = "");
     
 
-    bool file_save(const std::string &file_folder, const restinio::request_t &req);
-
     std::unique_ptr<http_server> restinio_server_;
     std::unique_ptr<restinio::on_pool_runner_t<http_server>> runner_;
     std::shared_ptr<ConnectionTimeoutController> connection_timeout_controller_;
@@ -101,5 +87,17 @@ class Server {
     bool keep_alive_ = false;
     bool stopping_ = false;
     bool allow_upload_ = false;
+    /**
+	 * @brief Handle a file upload request
+	 * 
+	 * This is a very dirty implementation. There is not much point in optimizing it here as this should be handled 
+	 * on a lower level by restinio. 
+	 * 
+	 * @param file_content the whole request as a string
+	 * @param file_path the path where the file will be saved
+	 * @param minimum_speed_kBs the speed used for calculating the timeout
+	 * @return int 
+	 */
+    [[deprecated("To be handled by restinio")]] int poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs = 10);
 };
 }  // namespace QrFileTransfer
