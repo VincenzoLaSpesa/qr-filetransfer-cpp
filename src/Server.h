@@ -87,6 +87,7 @@ class Server {
     bool keep_alive_ = false;
     bool stopping_ = false;
     bool allow_upload_ = false;
+    
     /**
 	 * @brief Handle a file upload request
 	 * 
@@ -98,6 +99,7 @@ class Server {
 	 * @param minimum_speed_kBs the speed used for calculating the timeout
 	 * @return int 
 	 */
-    [[deprecated("To be handled by restinio")]] int poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs = 10);
+    [[deprecated("To be handled by restinio")]] 
+    int poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs = 10);
 };
 }  // namespace QrFileTransfer

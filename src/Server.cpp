@@ -66,33 +66,6 @@ void store_file_to_disk(const std::string &file_path, restinio::string_view_t fi
     dest_file.close();
 }
 
-int Server::poor_man_file_writer(const std::string &file_content, std::string &file_path, restinio::connection_id_t c_id, float minimum_speed_kBs) {
-    std::string file_terminator;
-    std::stringstream sstream{file_content, std::ios::binary | std::ios::in};
-    std::getline(sstream, file_terminator, '\r');
-    std::getline(sstream, file_path, '\r');
-    std::smatch match;
-    static const std::regex rgx("filename=\\\"(\\w+.\\w+)\\\"");
-    if (std::regex_search(file_path, match, rgx) && match.size() > 1) {
-        file_path = match.str(1);
-    } else {
-        return -1;
-    };
-    std::string line_buffer;
-    std::ofstream output;
-    std::getline(sstream, line_buffer, '\r');
-    std::getline(sstream, line_buffer, '\r');
-    const auto offset_start = 1 + sstream.tellg();
-    const auto it = std::search(file_content.begin() + offset_start, file_content.end(), file_terminator.c_str(), file_terminator.data() + file_terminator.length());
-    const auto offset_end = std::distance(file_content.begin(), it);
-    const float time = (offset_end - offset_start) / (1024 * minimum_speed_kBs);  // the time needed for downloading with an average speed of minimum_speed_kBs
-    connection_timeout_controller_->ProtectConnection(c_id, time);
-    output.open(file_path, std::ios::binary | std::ios::out);
-    output << file_content.substr(offset_start, offset_end - offset_start - 2);
-    output.close();
-    return 1;
-}
-
 size_t file_writer(const std::string &file_content, const std::string &file_path) {
     std::string line_buffer;
     std::ofstream output;
