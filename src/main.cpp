@@ -1,4 +1,3 @@
-#include <restinio/all.hpp>
 #include <fmt/printf.h>
 #include <args.hxx>
 #include <asio.hpp>
@@ -113,7 +112,8 @@ int main(int argc, char **argv) {
     std::string path = fmt::sprintf("http://%s:%d/%s", addr, port, rand_path);
     fmt::printf("The served url is -> %s\n", path);
     printQr(path);
-    QrFileTransfer::Server server{addr, port, file_path, rand_path, keep, receive, verbose};
+    QrFileTransfer::Server server{addr, port, file_path, rand_path, keep.Get(), receive, verbose};
+	server.Start(true);
     printf("Server is ready\n");
     server.Wait();
     return 0;

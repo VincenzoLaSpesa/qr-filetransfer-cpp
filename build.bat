@@ -12,8 +12,9 @@ set CONAN_REVISIONS_ENABLED=1
 @echo on
 mkdir build_2019
 cd build_2019
+conan install .. --build=missing --profile=../conan_profiles/vs2019_x64.profile
 conan install .. --build=missing
 cd ..
 
-cmake -S . -B .\build_2019\ -G %TARGET1% -A x64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCONAN_TOOLCHAIN_FOLDER:STRING=build_2019
+cmake -S . -B .\build_2019\ -G %TARGET1% -A x64 -DCMAKE_BUILD_TYPE=Debug -DCONAN_TOOLCHAIN_FOLDER:STRING=build_2019
 cmake --build .\build_2019 --config Debug 

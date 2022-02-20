@@ -21,3 +21,19 @@ const char *html = R"MULTILINE(
 </body>
 </html>
 )MULTILINE";
+
+const char *html_stub = R"MULTILINE(
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <title>qr-filetransfer-cpp</title>
+</head>
+
+<body>
+<pre>{0}</pre>
+</body>
+</html>
+)MULTILINE";

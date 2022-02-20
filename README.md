@@ -21,7 +21,6 @@ This is absolutely a work in progress.
 -   Interface names ( on posix)
 -   Better handling for "post" requests
 -   Full static linking
--   Create a GUI with (probably) FLTK
 -   Store/load settings
 
 
@@ -30,32 +29,26 @@ This is absolutely a work in progress.
 The project is buildable with CMake from both linux and windows.
 The project depends on:
 
-- restinio (web server)
-- libqrencode (qr code generation)
-- asio (networking abstraction layer)
-- fmt (string interpolation)
-- taywee::args (command line arguments parsing)
+- cpp-httplib (web server) https://github.com/yhirose/cpp-httplib
+- libqrencode (qr code generation) https://github.com/fukuchi/libqrencode
+- asio (networking abstraction layer)   TO BE REMOVED!
+- fmt (string formatting) https://github.com/fmtlib/fmt
+- taywee::args (command line arguments parsing) https://github.com/Taywee/args
+- plog (small logging library) https://github.com/SergiusTheBest/plog
 
-You can install the dependencies in different ways, the suggested one is vcpkg.
-With vcpkg it's just:
+You can install the dependencies in different ways, the suggested way is using Conan, but vcpkg should work as well.
+With conan it's just:
 
-    ./vcpkg.exe install args asio fmt restinio libqrencode --triplet x64-windows
+    set TARGET="Visual Studio 15 2017"
+    mkdir build_folder
+    cd build_folder
+    conan install .. --build=missing
+    cd ..
 
-Remember to specify the correct system with the correct architecture. CMake is very picky even for headers only libraries.
+    cmake -S . -B .\build_folder\ -G %TARGET% -A x64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCONAN_TOOLCHAIN_FOLDER:STRING=build_folder
+    cmake --build .\build_folder --config Debug 
 
-Once you have cmake and the dependencies installed you can generate your solution with:
-
-    cmake .. -DCMAKE_PREFIX_PATH=%ABS_PATH% -G "Visual Studio 15 2017" -Ax64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_TOOLCHAIN_FILE=path_to_vcpkg_toolchain
-    
-    cmake --build . --config Debug 
-
-For visual studio or:
-
-    TODO
-
-For gnu make.
-
-(With a recent version of Visual Studio you can even try to import the CMake and let visual studio figure out how to make its solution. I've never tried)
+where `TARGET` is the kind of makefile you want to generate. If you omit it, most likely it will try to build a standard unix makefile.
 
 ### But I'm lazy! give me the binary!
     TODO
@@ -79,8 +72,8 @@ Most QR apps can detect URLs in decoded text and act accordingly (i.e. open the 
 
 ## Why?
 
-From time to time i try to build someting in C++ from scratch for experimenting with the newest features of the language, newer library, newer build systems.
-I usually end up thinking that it is till a mess.
+From time to time i try to build someting in C++ from scratch for experimenting with the newest features of the language, newer libraries, newer build systems.
+I usually end up thinking that it is till a mess, but this time... ok, it's still a mess but it was fun, and cpp-httplib is cool.
 
 ## License
 

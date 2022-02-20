@@ -1,5 +1,6 @@
 #pragma once
 #include <fmt/format.h>
+#include <fmt/printf.h>
 #include <iostream>
 #include <vector>
 

@@ -1,8 +1,16 @@
-# Defines the Chromium style for automatic reformatting.
-# http://clang.llvm.org/docs/ClangFormatStyleOptions.html
-BasedOnStyle: Chromium
-ColumnLimit:     0
+﻿---
+BasedOnStyle: Microsoft
+CompactNamespaces: 'false'
+Language: Cpp
+NamespaceIndentation: All
 PointerAlignment: Right
-PointerBindsToType: false
-IndentWidth: 4
-SortIncludes: false # this is VERY important
+ReflowComments: 'false'
+SortIncludes: 'false'
+SortUsingDeclarations: 'true'
+SpaceAfterCStyleCast: 'true'
+SpaceAfterLogicalNot: 'true'
+SpaceBeforeAssignmentOperators: 'true'
+SpaceBeforeRangeBasedForLoopColon: 'true'
+UseTab: ForIndentation
+ColumnLimit: 180
+...

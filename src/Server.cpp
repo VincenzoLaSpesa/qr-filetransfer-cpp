@@ -1,5 +1,4 @@
 #include "Server.h"
-#include "Connections.h"
 #include "htmldata.hpp"
 #include "CustomLogger.h"
 
@@ -9,203 +8,265 @@
 #include <thread>
 #include <fstream>
 #include <fmt/printf.h>
-#include <restinio/helpers/file_upload.hpp>
+//#include <restinio/helpers/file_upload.hpp>
+//https://github.com/yhirose/cpp-httplib
 
-std::shared_ptr<QrFileTransfer::ConnectionTimeoutController> QrFileTransfer::ConnectionTimeoutManagerFactory::timeout_controller_ = nullptr;
-
-std::uint64_t filesize(const std::string &filename) {
-    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
-    if (!in.good())
-        return 0;
-    return static_cast<std::uint64_t>(in.tellg());
+size_t filesize(const std::string &filename)
+{
+	std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+	if (! in.good())
+		return 0;
+	return static_cast<size_t>(in.tellg());
 }
 
-template <typename RESP>
-RESP init_resp(RESP resp) {
-    resp.append_header("qr-filetransfer_cpp", "qr-filetransfer_cpp powered by RESTinio");
-    resp.append_header_date_field()
-        .append_header("Content-Type", "text/plain; charset=utf-8");
-
-    return resp;
+std::string replace_all(std::string str, const std::string &from, const std::string &to)
+{
+	size_t start_pos = 0;
+	while ((start_pos = str.find(from, start_pos)) != std::string::npos)
+	{
+		str.replace(start_pos, from.length(), to);
+		start_pos += to.length();
+	}
+	return str;
 }
 
-restinio::request_handling_status_t sendfile(const std::string &file_path, std::shared_ptr<restinio::request_t> request, float minimum_speed_kBs) {
-    try {
-        const auto file_size = filesize(file_path);
-        if (file_size == 0)
-            return restinio::request_rejected();
-        const float timeout_seconds = (((float)file_size) / (1024 * minimum_speed_kBs));  // the time needed for downloading with an average speed of minimum_speed_kBs
-        restinio::file_offset_t m_data_offset{0};
-        restinio::file_size_t m_data_size{file_size};
-        restinio::sendfile_t sf = restinio::sendfile(file_path);
-        sf.offset_and_size(m_data_offset, m_data_size);
-        sf.timelimit(std::chrono::milliseconds((unsigned long)(timeout_seconds * 1000)));
-
-        return init_resp(request->create_response())
-            .append_header_date_field()
-            .append_header(restinio::http_field::content_type, "application / octet - stream")
-            .set_body(std::move(sf))
-            .done();
-    } catch (const std::exception &) {
-        return request->create_response(
-                          restinio::status_not_found())
-            .connection_close()
-            .append_header_date_field()
-            .done();
-    }
-    return restinio::request_rejected();
+void sanitize_string(std::string &str)
+{
+	replace_all(str, "/", "_");
+	replace_all(str, "\\", "_");
+	replace_all(str, "*", "_");
+	replace_all(str, "?", "_");
+	replace_all(str, "..", "_");
 }
 
-using namespace QrFileTransfer;
+//! Contains any non trivial handler used by the routes ( for avoiding huge lambdas )
+struct Handlers
+{
+	static bool http_post_upload(const httplib::Request &req, httplib::Response &res, const httplib::ContentReader &content_reader, QrFileTransfer::Server *caller)
+	{
+		using namespace httplib;
+		if (req.is_multipart_form_data())
+		{
+			// NOTE: `content_reader` is blocking until every form data field is read
+			MultipartFormDataItems files;
+			std::ofstream datafile;
+			auto handler_result = content_reader(
+			    [&](const MultipartFormData &file) {
+				    auto str = file.filename;
+				    sanitize_string(str);
+				    if (! datafile.is_open())
+					    datafile.open(str, std::ios_base::binary);
+				    if (! datafile.is_open() || ! datafile.good())
+					    return false;
+				    return true;
+			    },
+			    [&](const char *data, size_t data_length) {
+				    if (! datafile.is_open() || ! datafile.good())
+					    return false;
+				    datafile.write(data, data_length);
+				    return true;
+			    });
 
-void store_file_to_disk(const std::string &file_path, restinio::string_view_t file_name, restinio::string_view_t raw_content) {
-    std::ofstream dest_file;
-    dest_file.exceptions(std::ofstream::failbit);
-    dest_file.open(fmt::format("{}/{}", file_path, file_name), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
-    dest_file.write(raw_content.data(), raw_content.size());
-    dest_file.close();
-}
+			if (datafile.good())
+			{
+				double mb = (float) datafile.tellp() / (1024 * 1024);
 
-size_t file_writer(const std::string &file_content, const std::string &file_path) {
-    std::string line_buffer;
-    std::ofstream output;
-    output.open(file_path, std::ios::binary | std::ios::out);
-    output << file_content;
-    output.close();
-    return file_content.length();
-}
+				const std::string message = fmt::format("Done, the file should be long {0} bytes, or {1} Mb\n", datafile.tellp(), mb);
+				const std::string static_html = fmt::format(html_stub, message);
+				res.set_content(static_html, "text/html; charset=utf-8");
+				caller->GetLogger().Trace(message);
+				datafile.close();
+			}
+			else
+			{
+				const std::string static_html = fmt::format(html_stub, "the upload failed");
+				res.set_content(static_html, "text/html; charset=utf-8");
+				res.status = 500;
+				caller->GetLogger().Warn("An upload failed");
+			}
 
-bool QrFileTransfer::Server::File_save(const std::string &file_folder, const restinio::request_handle_t &req) {
-    using namespace restinio::file_upload;
-
-    const auto enumeration_result = enumerate_parts_with_files(
-        *req,
-        [&file_folder](const part_description_t &part) {
-            if ("file" == part.name || "files" == part.name) {
-                if (part.filename) {                    
-					store_file_to_disk(file_folder, *part.filename, part.body);
-                    return handling_result_t::stop_enumeration;
-                }
-            }
-            return handling_result_t::terminate_enumeration;
-        });
-    if (!enumeration_result || 1u != *enumeration_result)
-        return false;
-    return true;
-}
-
-
-//! Contains any non trivial handler used by the router ( for avoiding huge lambdas )
-struct Handlers {
-    static restinio::request_handling_status_t http_post_upload(const restinio::request_handle_t &req, const restinio::router::route_params_t &params, Server *caller, bool keep_alive) {
-		const std::string ctype = req->header().get_field_or("Content-Type", "");
-        if (ctype.find("multipart/form-data;") != 0)
-            return restinio::request_rejected();
-        std::string saved_path="./"; //@TODO allowing the client to set the filename could be a bad idea
-        if (Server::File_save(saved_path, req))
-            return restinio::request_accepted();
-        return restinio::request_rejected();
-        
-/*        if (caller->poor_man_file_writer(req->body(), saved_path, req->connection_id()) < 0) {
-            return restinio::request_rejected();
-        };
-        init_resp(req->create_response())
-            .append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
-            .set_body("File transferred")
-            .done();
-        caller->GetLogger().info(fmt::sprintf("File saved in %s", saved_path));
-        if (!keep_alive)
-            caller->InitShutdown();
-        return restinio::request_accepted();*/
-    }
-
-    static restinio::request_handling_status_t http_get_basic(const restinio::request_handle_t &req, const std::string &body, const std::string& content_type){
-        init_resp(req->create_response())
-            .append_header(restinio::http_field::content_type, content_type)
-            .set_body(body)
-            .done();
-
-        return restinio::request_accepted();	
+			return handler_result;
+		}
+		else
+		{
+			res.status = 500;
+			return false;
+		}
+		return true;
 	};
 
-    static restinio::request_handling_status_t http_get_file(const restinio::request_handle_t &req, Server *caller, bool keep_alive, const std::string &served_path) {
-            auto res = sendfile(served_path, req, 100);
-            caller->GetLogger().info(fmt::sprintf("%s served", served_path));
-            if (!keep_alive)
-                caller->InitShutdown();
-            return res;
-    };
+	static void http_get_file(const httplib::Request &req, httplib::Response &res, QrFileTransfer::Server *caller, bool keep_alive, const std::string &served_path)
+	{
+		const size_t fsize = filesize(served_path);
+		if (fsize == 0)
+		{
+			res.status = 404;
+			return;
+		}
+		caller->PendingTaskAdd();
+
+		std::shared_ptr<std::ifstream> data = std::make_shared<std::ifstream>(std::ifstream{});
+		data->open(served_path, std::ifstream::binary);
+		res.set_content_provider(
+		    fsize, "application/octet-stream",
+		    [=](size_t offset, size_t space_in_data_sink, httplib::DataSink &sink) {
+			    std::vector<char> buffer(caller->kChunkSize, 0);
+
+			    if (! data->is_open() && data->good())
+			    {
+				    return false;
+			    }
+			    if (! data->eof())
+			    {
+				    data->read(buffer.data(), std::min(space_in_data_sink, buffer.size()));
+				    const std::streamsize dataSize = data->gcount();
+				    sink.write(buffer.data(), dataSize);
+			    }
+			    else
+			    {
+				    sink.done();
+				    data->close();
+			    }
+			    return true;
+		    },
+		    [caller](bool success) { 
+				caller->PendingTaskRemove(); 
+				caller->GetLogger().Trace("File downloaded");
+			});
+
+		if (! keep_alive)
+			caller->InitShutdown();
+	};
 };
 
-Server::router *Server::make_router(const std::string &served_path, const std::string &randomized_path) {
-    auto *r = new router();
-    std::string path;
-    if (randomized_path.size() > 0)
-        path.append(randomized_path);
-    else
-        path = std::filesystem::path(served_path).filename().u8string();
-    
-	r->http_get("/", [](auto req, auto) { return Handlers::http_get_basic(req, "This is qr-filetransfer_cpp", "text/plain; charset=utf-8"); });
-    if (allow_upload_) {
-        fmt::printf("%s:%d : Upload allowed on %s \n", __FILE__, __LINE__, path);
-        static std::string static_html = fmt::format(html, randomized_path);
-        r->http_get("/" + path, [&](auto req, auto) { return Handlers::http_get_basic(req, static_html, "text/html; charset=utf-8"); });
-        r->http_post("/upload/" + path,[&](auto req, auto params) { return Handlers::http_post_upload(req, params, this, keep_alive_); });
-    } else {
-        fmt::printf("%s:%d : %s -> %s", __FILE__, __LINE__, served_path, path);
-        r->http_get("/" + path, [&](auto req, auto) {return Handlers::http_get_file(req, this, keep_alive_, served_path);});
-    }
-    return r;
+void QrFileTransfer::Server::setup_routes(const std::string &served_path, const std::string &randomized_path)
+{
+	using namespace httplib;
+	std::string path;
+	if (randomized_path.size() > 0)
+		path.append(randomized_path);
+	else
+		path = std::filesystem::path(served_path).filename().u8string();
+
+	server_.Get("/", [](const Request & /*req*/, Response &res) { res.set_content("This is qr-filetransfer_cpp", "text/plain; charset=utf-8"); });
+
+	if (allow_upload_)
+	{
+		logger_.Info(fmt::sprintf("%s:%d : Upload allowed on %s \n", __FILE__, __LINE__, path));
+		static std::string static_html = fmt::format(html, randomized_path);
+
+		server_.Get("/" + path, [](const Request & /*req*/, Response &res) { res.set_content(static_html, "text/html; charset=utf-8"); });
+
+		server_.Post("/upload/" + path, [&](const Request &req, Response &res, const ContentReader &content_reader) {
+			Handlers::http_post_upload(req, res, content_reader, this);
+			if (! keep_alive_)
+				InitShutdown();
+		});
+	}
+	else
+	{
+		logger_.Info(fmt::sprintf("%s:%d : %s -> %s", __FILE__, __LINE__, served_path, path));
+		server_.Get("/" + path, [&](const Request &req, Response &res) { return Handlers::http_get_file(req, res, this, keep_alive_, served_path); });
+	}
 }
 
-Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload, bool verbose) {
-    keep_alive_ = keep_alive;
-    allow_upload_ = allow_upload;
-    connection_timeout_controller_.reset(new ConnectionTimeoutController());
-    ConnectionTimeoutManagerFactory::SetTimeoutController(connection_timeout_controller_);
-    std::unique_ptr<Server::router> r{make_router(served_path, randomized_path)};
-    std::shared_ptr<ConnectionListener> connection_listener{new ConnectionListener(connection_timeout_controller_)};
-    auto settings = restinio::server_settings_t<server_traits>{}
-                        .port(port)
-                        .address(addr)
-                        .connection_state_listener(connection_listener)
-                        .request_handler(std::move(r))
-                        .concurrent_accepts_count(10)
-                        .logger(verbose ? LogLevel::Trace : LogLevel::Info, logger_.GetRawLogger());
-    restinio_server_.reset(new http_server{restinio::own_io_context(), std::move(settings)});
-    runner_.reset(new restinio::on_pool_runner_t<http_server>{
-        std::thread::hardware_concurrency(),
-        *restinio_server_});
-    runner_->start();
-    connection_listener->set_server(this);
-    started_ = WaitForStartup();
+void QrFileTransfer::Server::runner_main()
+{
+	server_.listen(server_address_.c_str(), server_port_);
 }
 
-bool Server::WaitForStartup(int timeout_seconds) {
-    using namespace std::chrono_literals;
-    int waited = 0;
-    while (waited < timeout_seconds) {
-        if (restinio_server_ != nullptr && runner_ != nullptr && runner_->started())
-            return true;
-        std::this_thread::sleep_for(1s);
-        waited++;
-    }
-    return false;
+QrFileTransfer::Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload,
+                               bool verbose)
+{
+	keep_alive_ = keep_alive;
+	allow_upload_ = allow_upload;
+	server_address_ = addr;
+	server_port_ = port;
+	setup_routes(served_path, randomized_path);
+	logger_.EnableLogToFile("serverlog.log");
 }
 
-void Server::Wait() {
-    if (started_)
-        runner_->wait();
+bool QrFileTransfer::Server::WaitForStartup(int timeout_seconds)
+{
+	using namespace std::chrono_literals;
+	int waited = 0;
+	while (waited < timeout_seconds)
+	{
+		if (server_.is_valid() && server_.is_running())
+			return true;
+		std::this_thread::sleep_for(1s);
+		waited++;
+	}
+	return false;
 }
 
-void Server::Stop(bool wait) {
-    if (started_) {
-        runner_->stop();
-        if (wait)
-            runner_->wait();
-    }
+void QrFileTransfer::Server::Wait()
+{
+	if (started_)
+		runner_.join();
 }
 
-Server::~Server() {
-    Stop();
+void QrFileTransfer::Server::Start(bool waitForStartup, bool WaitForExit)
+{
+	if (WaitForExit)
+	{
+		runner_main();
+	}
+	else
+	{
+		runner_ = std::thread(&Server::runner_main, this);
+		if (waitForStartup)
+			started_ = WaitForStartup();
+	}
+}
+
+void QrFileTransfer::Server::Stop(bool wait)
+{
+	if (started_)
+	{
+		server_.stop();
+		started_ = false;
+	}
+	if (wait && runner_.joinable())
+		runner_.join();
+}
+
+/**
+	If you just stop the server inside a request handler the client will not get any data back. 
+	It's better to stop accepting new connections and give some seconds to teh server to answer the pending ones
+*/
+void QrFileTransfer::Server::InitShutdown()
+{
+	if (! stopping_)
+	{
+		stopping_ = true;
+		_killer = std::thread([&]() {
+			server_.set_pre_routing_handler([&](const auto &req, auto &res) {
+				logger_.Info("Connection refused, the server is shutting down");
+				return httplib::Server::HandlerResponse::Unhandled;
+			});
+			using namespace std::chrono_literals;
+			int delay = 5;
+			while (pending_ > 0)
+			{				
+				logger_.Trace(fmt::sprintf("Waiting for %d pending task(s)", pending_));
+				std::this_thread::sleep_for(2s);
+				delay -= 2;
+			}
+			if (delay > 0)
+			{
+				logger_.Trace("The server is not accepting new connections and it will shut down in 5 seconds.");
+				std::this_thread::sleep_for(std::chrono::seconds(delay));
+			}
+			Stop(false);
+		});
+		logger_.Info("The server is shutting down.");
+	}
+}
+
+QrFileTransfer::Server::~Server()
+{
+	Stop(true);
+	if (_killer.joinable())
+		_killer.join();
 }

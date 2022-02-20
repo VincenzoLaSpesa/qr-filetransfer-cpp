@@ -27,10 +27,10 @@ MESSAGE( STATUS "Looking for libs ... " )
   #restinio and its dependencies
   #find_package(unofficial-http-parser REQUIRED)
   find_package(fmt REQUIRED)
-  find_package(restinio REQUIRED)
   find_package(asio REQUIRED)
 
   find_package(args REQUIRED)    
+  find_package(httplib REQUIRED) # there is more than one lib called like this, see the Conan file for more info
 
   find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
   find_library(QRENCODE_LIBRARY_RELEASE qrencode)

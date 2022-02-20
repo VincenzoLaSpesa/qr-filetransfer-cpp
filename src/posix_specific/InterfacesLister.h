@@ -4,6 +4,7 @@
 
 namespace Util {
 std::vector<NetworkInterface> ListInterfaces() {
+	//@TODO do not use asio
     std::vector<NetworkInterface> i;
     asio::io_service io_service;
 
