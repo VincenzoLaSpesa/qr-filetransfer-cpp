@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.12)
 
-project(qr-filetransfer_cpp VERSION LANGUAGES C CXX)
+project(qr-filetransfer_cpp LANGUAGES C CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -34,8 +34,8 @@ MESSAGE( STATUS "Looking for libs ... " )
 
   find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
   find_library(QRENCODE_LIBRARY_RELEASE qrencode)
-  find_library(QRENCODE_LIBRARY_DEBUG qrencoded)
-  set(QRENCODE_LIBRARIES optimized ${QRENCODE_LIBRARY_RELEASE} debug ${QRENCODE_LIBRARY_DEBUG})	
+  #find_library(QRENCODE_LIBRARY_DEBUG qrencoded)
+  set(QRENCODE_LIBRARIES optimized ${QRENCODE_LIBRARY_RELEASE} debug ${QRENCODE_LIBRARY_RELEASE})	# somehow the package is currently broken
 MESSAGE( STATUS "All libs found. " )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

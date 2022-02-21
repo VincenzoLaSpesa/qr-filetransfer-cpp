@@ -14,13 +14,10 @@ This is absolutely a work in progress.
 -   Upload a file ( from mobile to desktop)
 -   Verbose option
 -   Specify a custom port   
--   Interface names ( on windows)
+-   Interface names
 
 ### TODO ( in order of importance)
 -   Serve an entire folder (recursively)
--   Interface names ( on posix)
--   Better handling for "post" requests
--   Full static linking
 -   Store/load settings
 
 
@@ -31,10 +28,8 @@ The project depends on:
 
 - cpp-httplib (web server) https://github.com/yhirose/cpp-httplib
 - libqrencode (qr code generation) https://github.com/fukuchi/libqrencode
-- asio (networking abstraction layer)   TO BE REMOVED!
 - fmt (string formatting) https://github.com/fmtlib/fmt
 - taywee::args (command line arguments parsing) https://github.com/Taywee/args
-- plog (small logging library) https://github.com/SergiusTheBest/plog
 
 You can install the dependencies in different ways, the suggested way is using Conan, but vcpkg should work as well.
 With conan it's just:

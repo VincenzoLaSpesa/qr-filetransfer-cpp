@@ -1,4 +1,14 @@
 #pragma once
+#include <chrono>
+#include <string>
+#include <functional>
+#include <mutex>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cstring>
 
 enum class LogLevel
 {
@@ -111,8 +121,10 @@ class Logger
 	{
 		std::stringstream ss;
 		ss << std::setprecision(3);
+		const auto now = std::chrono::high_resolution_clock::now();
+		const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(now-_basetimestamp).count();
 		if (printTimestamp)
-			ss << (float) (GetTickCount64() - _basetimestamp) / 1000.0f << " ";
+			ss << elapsed_time_s << " ";
 		if (header && strlen(header) > 0)
 			ss << header << '\t';
 		if (message && strlen(message) > 0)
@@ -133,10 +145,10 @@ class Logger
 	void setup(const LogLevel &ll = LogLevel::Warning)
 	{
 		log_level_ = ll;
-		_basetimestamp = GetTickCount64();
+		_basetimestamp = std::chrono::high_resolution_clock::now();
 	}
 	LogLevel log_level_;
 	std::ofstream _fileStream;
-	uint64_t _basetimestamp;
+	std::chrono::_V2::system_clock::time_point _basetimestamp;
 	std::mutex _mutex;	
 };
