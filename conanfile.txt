@@ -1,0 +1,12 @@
+[requires]
+	fmt/8.1.1
+	libqrencode/4.1.1
+	taywee-args/6.3.0
+	cpp-httplib/0.10.1
+
+[options]
+	fmt:header_only=True
+
+[generators]
+	cmake
+	cmake_find_package

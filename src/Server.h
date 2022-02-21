@@ -1,41 +1,60 @@
 #pragma once
-#include <restinio/all.hpp>
 #include <string>
+#include <httplib.h>
 #include "CustomLogger.h"
 
-class ConnectionListener;
+namespace QrFileTransfer
+{
+	class ConnectionTimeoutManager;
+	class ConnectionListener;
 
-class Server {
-   public:
-    Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &virtual_path = "", bool keep_alive = false, bool allow_upload = false, bool verbose = false);
-    bool WaitForStartup(int timeout_seconds = 5);
-    void Wait();
-    void Stop(bool wait = true);
-    void InitShutdown() { stopping_ = true; }
-    const bool IsShuttingDown() { return stopping_; }
-    CustomLogger &GetLogger() { return logger_; };
-    ~Server();
+	/**
+    * @brief the Server, holds an httplib::server inside a thread
+    */
+	class Server
+	{
+	  public:
+		Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &virtual_path = "", bool keep_alive = false,
+		       bool allow_upload = false, bool verbose = false);
+		bool WaitForStartup(int timeout_seconds = 5);
+		void Wait();
+		void Start(bool waitForStartup = true, bool WaitForExit = false);
+		void Stop(bool wait = true);
+		void InitShutdown();
+		int PendingTaskAdd()
+		{
+			return ++pending_;
+		}
+		int PendingTaskRemove()
+		{
+			return --pending_;
+		}
+		const bool IsShuttingDown()
+		{
+			return stopping_;
+		}
+		Logger &GetLogger()
+		{
+			return logger_;
+		};
+		~Server();
 
-   private:
-    using router = restinio::router::express_router_t<restinio::router::std_regex_engine_t>;
+		const unsigned short kChunkSize = 1024;
 
-    struct server_traits : public restinio::traits_t<
-                               restinio::asio_timer_manager_t,
-                               restinio::single_threaded_ostream_logger_t,
-                               router> {
-        using connection_state_listener_t = ConnectionListener;
-        using logger_t = CustomLogger;
-    };
+	  private:
+		void setup_routes(const std::string &served_path, const std::string &randomized_path);
+		void runner_main();
+		httplib::Server server_;
+		std::thread runner_;
+		std::thread _killer;
 
-    using http_server = restinio::http_server_t<server_traits>;
-
-    router *make_router(const std::string &served_path, const std::string &virtual_path = "");
-
-    std::unique_ptr<http_server> server_;
-    std::unique_ptr<restinio::on_pool_runner_t<http_server>> runner_;
-    CustomLogger logger_;
-    bool started_ = false;
-    bool keep_alive_ = false;
-    bool stopping_ = false;
-    bool allow_upload_ = false;
-};
+		Logger logger_;
+		bool started_ = false;
+		bool keep_alive_ = false;
+		bool stopping_ = false;
+		bool allow_upload_ = false;
+		std::atomic<int> pending_ = 0;
+		std::string server_address_;
+		unsigned short server_port_ = 8080;
+	};
+} // namespace QrFileTransfer

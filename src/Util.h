@@ -1,5 +1,6 @@
 #pragma once
 #include <fmt/format.h>
+#include <fmt/printf.h>
 #include <iostream>
 #include <vector>
 
@@ -30,9 +31,8 @@ struct NetworkInterface {
 };
 
 std::string RandomizePath(const std::string &path){
-    auto now = std::chrono::system_clock::now();
     std::hash<std::string> hash_function;
-    return std::move(fmt::sprintf("%x", hash_function(path) ^ std::time(0)));
+    return std::move(fmt::sprintf("%x", hash_function(path) ^ rand()));
 }
 
 }  // namespace Util

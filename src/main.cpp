@@ -1,12 +1,14 @@
-#include <restinio/all.hpp>
 #include <fmt/printf.h>
 #include <args.hxx>
 #include <asio.hpp>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <qrencode.h>
 #include "Util.h"
 #include "Server.h"
+#include <fmt/color.h>
+
 
 //! List all the available ip addresses, prompt the user to select one via stdin, return the selected address
 std::string ChooseInterface() {
@@ -15,7 +17,7 @@ std::string ChooseInterface() {
     unsigned int n = 0;
     std::cout << "Choose a network address by its number \n";
     for (const auto i : interfaces) {
-        fmt::printf("%d -> %s (%s) \n", n, i.address, i.name);
+        fmt::printf(" %d -> %s (%s) \n", n, i.address, i.name);
         n++;
     }
     std::cout << "\nInput number: ";
@@ -32,31 +34,37 @@ std::string ChooseInterface() {
 
 //! Generate a qrcode from a string and print it to stdout
 void printQr(const std::string &url) {
+    std::stringstream ss{};
+    const auto pixel= "█"; 
     QRcode *qrcode = QRcode_encodeString(url.c_str(), 1, QR_ECLEVEL_M, QR_MODE_8, 1);
     unsigned char *data = qrcode->data;
     const size_t size = qrcode->width;
     const size_t line_size = size * 2 + 4;
-    std::string line_buffer(line_size, (char)219);
 
-    std::cout << "\n " << line_buffer << '\n';
-    for (int r = 0; r < size; r++) {
-        int cc = 2;
+    for (int r = 0; r < size + 2 ; r++) {
+        ss << ' ' << pixel;                
         for (int c = 0; c < size; c++) {
-            const char x = (*data & 1) ? ' ' : 219;
-            line_buffer[cc++] = x;
-            line_buffer[cc++] = x;
-            data++;
+            if(r == 0 || r > size)
+            { //first and last row
+                ss << pixel << pixel; 
+            }
+            else
+            {
+                const auto x = (*data & 1) ? " " : pixel;
+                ss << x << x ; 
+                data++;
+            }
         }
-        std::cout << ' ' << line_buffer << '\n';
+        ss << pixel << '\n';
     }
-    line_buffer.assign(line_size, (char)219);
-    std::cout << ' ' << line_buffer << std::endl;
+    std::cout << ss.str() << std::endl;
     QRcode_free(qrcode);
 }
 
+
 int main(int argc, char **argv) {
     unsigned short port = 8080;
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     std::string file_path;
     //parse the commandline options
     args::ArgumentParser parser("qr-filentransfer-cpp", "");
@@ -86,8 +94,14 @@ int main(int argc, char **argv) {
     if (filename) {
         std::cout << filename.Get() << " will be served" << std::endl;
         file_path = filename.Get();
+        if (!std::filesystem::exists(file_path)) {
+            const auto abspath = std::filesystem::absolute(file_path);
+            std::cerr << "The file '" << abspath << "' does not exist or it's impossible to open" << std::endl;
+            return -4;        
+		}
     } else {
         std::cerr << "A filename is needed \n";
+        std::cout << parser;
         return -1;
     }
     if (port_number)
@@ -106,7 +120,8 @@ int main(int argc, char **argv) {
     std::string path = fmt::sprintf("http://%s:%d/%s", addr, port, rand_path);
     fmt::printf("The served url is -> %s\n", path);
     printQr(path);
-    Server server{addr, port, file_path, rand_path, keep, receive, verbose};
+    QrFileTransfer::Server server{addr, port, file_path, rand_path, keep.Get(), receive, verbose};
+	server.Start(true);
     printf("Server is ready\n");
     server.Wait();
     return 0;

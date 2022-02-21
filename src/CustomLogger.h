@@ -1,73 +1,154 @@
 #pragma once
-#include <restinio/all.hpp>
-enum class LogLevel { None,
-                      Error,
-                      Warning,
-                      Info,
-                      Trace
+#include <chrono>
+#include <string>
+#include <functional>
+#include <mutex>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cstring>
+
+enum class LogLevel
+{
+	None,
+	Error,
+	Warning,
+	Info,
+	Trace
 };
 
 /**
  * @brief A template-free wrapper of restinio::ostream_logger_t<std::mutex>.
  * Allows multiple logger to write to the same logging channel with different level of verbosity
  */
-class CustomLogger {
-   public:
-    CustomLogger() { setup(); };
-    CustomLogger(const LogLevel &ll) { setup(ll); };
-    CustomLogger(const LogLevel &ll, const std::shared_ptr<restinio::ostream_logger_t<std::mutex>> logger) { setup(ll, logger); };
+class Logger
+{
+  public:
+	Logger()
+	{
+		setup();
+	};
+	Logger(const LogLevel &ll, const char *filename = nullptr)
+	{
+		setup(ll);
+		if (filename)
+			EnableLogToFile(filename);
+	};
 
-    LogLevel GetLogLevel() { return log_level_; }
-    void SetLogLevel(const LogLevel &ll) {
-        log_level_ = ll;
-    }
+	LogLevel GetLogLevel()
+	{
+		return log_level_;
+	}
+	void SetLogLevel(const LogLevel &ll)
+	{
+		log_level_ = ll;
+	}
 
-    std::shared_ptr<restinio::ostream_logger_t<std::mutex>> GetRawLogger() { return logger_; }
+	void Trace(const std::function<std::string(void)> msg_builder)
+	{
+		if (log_level_ >= LogLevel::Trace)
+			logText("TRACE", msg_builder(), true);
+	}
 
-    void trace(const std::function<std::string(void)> msg_builder) {
-        if (log_level_ >= LogLevel::Trace)
-            logger_->trace(msg_builder);
-    }
+	void Info(const std::function<std::string(void)> msg_builder)
+	{
+		if (log_level_ >= LogLevel::Info)
+			logText("INFO", msg_builder(), true);
+	}
 
-    void info(const std::function<std::string(void)> msg_builder) {
-        if (log_level_ >= LogLevel::Info)
-            logger_->info(msg_builder);
-    }
+	void Warn(const std::function<std::string(void)> msg_builder)
+	{
+		if (log_level_ >= LogLevel::Warning)
+			logText("WARNING", msg_builder(), true);
+	}
 
-    void warn(const std::function<std::string(void)> msg_builder) {
-        if (log_level_ >= LogLevel::Warning)
-            logger_->warn(msg_builder);
-    }
+	void Error(const std::function<std::string(void)> msg_builder)
+	{
+		if (log_level_ >= LogLevel::Error)
+			logText("ERROR", msg_builder(), true);
+	}
 
-    void error(const std::function<std::string(void)> msg_builder) {
-        if (log_level_ >= LogLevel::Error)
-            logger_->error(msg_builder);
-    }
+	void Trace(const std::string &msg)
+	{
+		logText("TRACE", msg, true);
+	}
 
-    void trace(const std::string &msg) {
-        logger_->trace([&] { return msg; });
-    }
+	void Info(std::string msg)
+	{
+		logText("INFO", msg, true);
+	}
 
-    void info(std::string msg) {
-        logger_->info([&] { return msg; });
-    }
+	void Warn(const std::string &msg)
+	{
+		logText("WARNING", msg, true);
+	}
 
-    void warn(const std::string &msg) {
-        logger_->warn([&] { return msg; });
-    }
+	void Error(const std::string &msg)
+	{
+		logText("ERROR", msg, true);
+	}
 
-    void error(const std::string &msg) {
-        logger_->error([&] { return msg; });
-    }
+	void Flush()
+	{		
+		std::unique_lock<std::mutex> lock(_mutex);
+		if (_fileStream.is_open() && _fileStream.good())
+			_fileStream.flush();
+	};
 
-   private:
-    void setup(const LogLevel &ll = LogLevel::Warning, std::shared_ptr<restinio::ostream_logger_t<std::mutex>> l = nullptr) {
-        log_level_ = ll;
-        if (l)
-            logger_ = l;
-        else
-            logger_ = std::make_shared<restinio::ostream_logger_t<std::mutex>>();
-    }
-    std::shared_ptr<restinio::ostream_logger_t<std::mutex>> logger_;
-    LogLevel log_level_;
+	~Logger()
+	{
+		if (_fileStream.is_open() && _fileStream.good())
+			_fileStream.close();
+	}
+
+	bool EnableLogToFile(const char *filename)
+	{
+		if (_fileStream.is_open() && _fileStream.good())
+			_fileStream.close();
+
+		_fileStream.open(filename, std::ofstream::out | std::ofstream::app);
+		if (_fileStream.bad())
+			return false;
+		_fileStream << std::setprecision(3);
+		return true;
+	}
+
+  private:
+
+	void logText(const char *header, const char *message, bool printTimestamp = false)
+	{
+		std::stringstream ss;
+		ss << std::setprecision(3);
+		const auto now = std::chrono::high_resolution_clock::now();
+		const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(now-_basetimestamp).count();
+		if (printTimestamp)
+			ss << elapsed_time_s << " ";
+		if (header && strlen(header) > 0)
+			ss << header << '\t';
+		if (message && strlen(message) > 0)
+			ss << message << '\t';
+		ss << std::endl;
+
+		std::unique_lock<std::mutex> lock(_mutex);
+
+		std::cout << ss.str();
+		if (_fileStream.is_open() && _fileStream.good())
+			_fileStream << ss.str();
+	}
+	void logText(const char *header, const std::string message, bool printTimestamp = false)
+	{
+		logText(header, message.c_str(), printTimestamp);
+	}
+
+	void setup(const LogLevel &ll = LogLevel::Warning)
+	{
+		log_level_ = ll;
+		_basetimestamp = std::chrono::high_resolution_clock::now();
+	}
+	LogLevel log_level_;
+	std::ofstream _fileStream;
+	std::chrono::_V2::system_clock::time_point _basetimestamp;
+	std::mutex _mutex;	
 };
