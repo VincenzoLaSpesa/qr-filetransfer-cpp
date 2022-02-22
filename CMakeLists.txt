@@ -11,6 +11,9 @@ endif()
 
 if(EXISTS "ConanWrapper.cmake")
 	include("ConanWrapper.cmake")
+elseif(EXISTS "${PROJECT_SOURCE_DIR}/ConanWrapper.cmake")
+  MESSAGE(STATUS "Including ${PROJECT_SOURCE_DIR}/ConanWrapper.cmake")  
+  include("${PROJECT_SOURCE_DIR}/ConanWrapper.cmake")
 else()
 	MESSAGE( STATUS "Conan is not used")
 endif()
@@ -25,9 +28,7 @@ endif()
 
 MESSAGE( STATUS "Looking for libs ... " )
   #restinio and its dependencies
-  #find_package(unofficial-http-parser REQUIRED)
   find_package(fmt REQUIRED)
-  find_package(asio REQUIRED)
 
   find_package(args REQUIRED)    
   find_package(httplib REQUIRED) # there is more than one lib called like this, see the Conan file for more info
@@ -36,6 +37,10 @@ MESSAGE( STATUS "Looking for libs ... " )
   find_library(QRENCODE_LIBRARY_RELEASE qrencode)
   #find_library(QRENCODE_LIBRARY_DEBUG qrencoded)
   set(QRENCODE_LIBRARIES optimized ${QRENCODE_LIBRARY_RELEASE} debug ${QRENCODE_LIBRARY_RELEASE})	# somehow the package is currently broken
+
+  find_package(Threads REQUIRED )
+  MESSAGE(STATUS "--> Pthread in " ${CMAKE_THREAD_LIBS_INIT})#pthread library
+	MESSAGE(STATUS "--> ldl in " ${CMAKE_DL_LIBS})#dl libs  
 MESSAGE( STATUS "All libs found. " )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
