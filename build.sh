@@ -33,4 +33,3 @@ cmake --build ./$BUILD_FOLDER
 #conan install .. --build=missing --profile=../conan_profiles/gcc10_x64_linux.profile
 #cd ..
 #cmake -S . -B ./${BUILD_FOLDER}_makefile/ -DCONAN_TOOLCHAIN_FOLDER:STRING=${BUILD_FOLDER}_makefile
-

@@ -30,6 +30,7 @@ class Logger
 	{
 		setup();
 	};
+  
 	Logger(const LogLevel &ll, const char *filename = nullptr)
 	{
 		setup(ll);
@@ -41,11 +42,11 @@ class Logger
 	{
 		return _log_level;
 	}
-	void SetLogLevel(const LogLevel &ll)
+
+  void SetLogLevel(const LogLevel &ll)
 	{
 		_log_level = ll;
 	}
-
 	void Trace(const std::function<std::string(void)> msg_builder)
 	{
 		if (_log_level >= LogLevel::Trace)
@@ -116,7 +117,8 @@ class Logger
 	}
 
   private:
-	void logText(const char *header, const char *message, bool printTimestamp = false)
+
+  void logText(const char *header, const char *message, bool printTimestamp = false)
 	{
 		std::stringstream ss;
 		ss << std::setprecision(3);
@@ -133,7 +135,6 @@ class Logger
 				const auto tm = *std::localtime(&t);
 				ss << std::put_time(&tm, "%FT%TZ") << '\t';
 			}
-
 		if (header && strlen(header) > 0)
 			ss << header << '\t';
 		if (message && strlen(message) > 0)

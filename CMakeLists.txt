@@ -27,9 +27,7 @@ else()
 endif()
 
 MESSAGE( STATUS "Looking for libs ... " )
-  #restinio and its dependencies
   find_package(fmt REQUIRED)
-
   find_package(args REQUIRED)    
   find_package(httplib REQUIRED) # there is more than one lib called like this, see the Conan file for more info
 
@@ -37,7 +35,6 @@ MESSAGE( STATUS "Looking for libs ... " )
   find_library(QRENCODE_LIBRARY_RELEASE qrencode)
   #find_library(QRENCODE_LIBRARY_DEBUG qrencoded)
   set(QRENCODE_LIBRARIES optimized ${QRENCODE_LIBRARY_RELEASE} debug ${QRENCODE_LIBRARY_RELEASE})	# somehow the package is currently broken
-
   find_package(Threads REQUIRED )
   MESSAGE(STATUS "--> Pthread in " ${CMAKE_THREAD_LIBS_INIT})#pthread library
 	MESSAGE(STATUS "--> ldl in " ${CMAKE_DL_LIBS})#dl libs  
@@ -54,7 +51,3 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(PROJECT_INSTALL_DIR "bin")
 
 add_subdirectory(src)
-
-
-
-
