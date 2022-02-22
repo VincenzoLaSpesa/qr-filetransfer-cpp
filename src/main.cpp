@@ -1,6 +1,5 @@
 #include <fmt/printf.h>
 #include <args.hxx>
-#include <asio.hpp>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>

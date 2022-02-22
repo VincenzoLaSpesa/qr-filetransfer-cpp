@@ -30,6 +30,7 @@ class Logger
 	{
 		setup();
 	};
+  
 	Logger(const LogLevel &ll, const char *filename = nullptr)
 	{
 		setup(ll);
@@ -39,34 +40,34 @@ class Logger
 
 	LogLevel GetLogLevel()
 	{
-		return log_level_;
-	}
-	void SetLogLevel(const LogLevel &ll)
-	{
-		log_level_ = ll;
+		return _log_level;
 	}
 
+  void SetLogLevel(const LogLevel &ll)
+	{
+		_log_level = ll;
+	}
 	void Trace(const std::function<std::string(void)> msg_builder)
 	{
-		if (log_level_ >= LogLevel::Trace)
+		if (_log_level >= LogLevel::Trace)
 			logText("TRACE", msg_builder(), true);
 	}
 
 	void Info(const std::function<std::string(void)> msg_builder)
 	{
-		if (log_level_ >= LogLevel::Info)
+		if (_log_level >= LogLevel::Info)
 			logText("INFO", msg_builder(), true);
 	}
 
 	void Warn(const std::function<std::string(void)> msg_builder)
 	{
-		if (log_level_ >= LogLevel::Warning)
+		if (_log_level >= LogLevel::Warning)
 			logText("WARNING", msg_builder(), true);
 	}
 
 	void Error(const std::function<std::string(void)> msg_builder)
 	{
-		if (log_level_ >= LogLevel::Error)
+		if (_log_level >= LogLevel::Error)
 			logText("ERROR", msg_builder(), true);
 	}
 
@@ -91,7 +92,7 @@ class Logger
 	}
 
 	void Flush()
-	{		
+	{
 		std::unique_lock<std::mutex> lock(_mutex);
 		if (_fileStream.is_open() && _fileStream.good())
 			_fileStream.flush();
@@ -117,14 +118,23 @@ class Logger
 
   private:
 
-	void logText(const char *header, const char *message, bool printTimestamp = false)
+  void logText(const char *header, const char *message, bool printTimestamp = false)
 	{
 		std::stringstream ss;
 		ss << std::setprecision(3);
-		const auto now = std::chrono::high_resolution_clock::now();
-		const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(now-_basetimestamp).count();
 		if (printTimestamp)
-			ss << elapsed_time_s << " ";
+			if (_relativeTimestamp)
+			{
+				const auto now = std::chrono::high_resolution_clock::now();
+				const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(now - _basetimestamp).count();
+				ss << elapsed_time_s << '\t';
+			}
+			else
+			{
+				const auto t = std::time(nullptr);
+				const auto tm = *std::localtime(&t);
+				ss << std::put_time(&tm, "%FT%TZ") << '\t';
+			}
 		if (header && strlen(header) > 0)
 			ss << header << '\t';
 		if (message && strlen(message) > 0)
@@ -142,13 +152,14 @@ class Logger
 		logText(header, message.c_str(), printTimestamp);
 	}
 
-	void setup(const LogLevel &ll = LogLevel::Warning)
+	void setup(const LogLevel &ll = LogLevel::Warning, bool printRelativeTimestamp = false)
 	{
-		log_level_ = ll;
+		_log_level = ll;
 		_basetimestamp = std::chrono::high_resolution_clock::now();
 	}
-	LogLevel log_level_;
+	LogLevel _log_level;
 	std::ofstream _fileStream;
 	std::chrono::_V2::system_clock::time_point _basetimestamp;
-	std::mutex _mutex;	
+	std::mutex _mutex;
+	bool _relativeTimestamp = false;
 };

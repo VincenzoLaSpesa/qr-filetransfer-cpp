@@ -11,12 +11,17 @@ else()
 	MESSAGE(STATUS "Using toolchain in ${CMAKE_TOOLCHAIN_FILE} ")
 endif()
 
-set(conanFolder "${CMAKE_CURRENT_SOURCE_DIR}")
-#get_filename_component(conanFolder ${conanFolder}/.. ABSOLUTE) # goes up one level
-MESSAGE( STATUS "Looking for Conan in ${conanFolder}")
+if(EXISTS "${CONAN_TOOLCHAIN_FOLDER}") # is it an absolute path?
+	set(conanToolchain "${CONAN_TOOLCHAIN_FOLDER}/conanbuildinfo.cmake")
+	set(conanPaths "${CONAN_TOOLCHAIN_FOLDER}/conan_paths.cmake")
+else() # is it a relative path from the source dir?
+	set(conanFolder "${CMAKE_CURRENT_SOURCE_DIR}")
+	set(conanToolchain "${conanFolder}/${CONAN_TOOLCHAIN_FOLDER}/conanbuildinfo.cmake")
+	set(conanPaths "${conanFolder}/${CONAN_TOOLCHAIN_FOLDER}/conan_paths.cmake")
+endif()
 
-set(conanToolchain "${conanFolder}/${CONAN_TOOLCHAIN_FOLDER}/conanbuildinfo.cmake")
-set(conanPaths "${conanFolder}/${CONAN_TOOLCHAIN_FOLDER}/conan_paths.cmake")
+MESSAGE( STATUS "Looking for Conan in ${conanToolchain}")
+
 if(EXISTS "${conanToolchain}")
 	MESSAGE( STATUS "Using Conan as dependency manager")
 	include(${conanToolchain})
