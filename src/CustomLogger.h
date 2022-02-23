@@ -9,6 +9,22 @@
 #include <iomanip>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
+
+namespace {
+int localtime_crossplatform( struct tm* const tmDest,  time_t const* const sourceTime)
+{ //@TODO use some modern c++ stuff, not this horrible workaround
+#ifdef _WIN32
+	return localtime_s(tmDest, sourceTime);
+#else
+	//mock the windows one from posix
+	localtime_r(sourceTime, tmDest);
+	if(tmDest)
+		return 0;
+	return 22; 
+#endif
+}
+}
 
 enum class LogLevel
 {
@@ -121,15 +137,16 @@ class Logger
 		if (printTimestamp)
 			if (_relativeTimestamp)
 			{
-				const auto now = std::chrono::high_resolution_clock::now();
-				const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(now - _basetimestamp).count();
+				const auto now = std::chrono::system_clock::now();
+				const auto delta = now - _basetimestamp;
+				const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(delta).count();
 				ss << elapsed_time_s << '\t';
 			}
 			else
 			{
 				const auto t = std::time(nullptr);
 				tm localtime;
-				localtime_s(&localtime, &t);
+				localtime_crossplatform(&localtime, &t);
 				ss << std::put_time(&localtime, "%FT%TZ") << '\t';
 			}
 		if (header && strlen(header) > 0)
@@ -155,11 +172,11 @@ class Logger
 	void setup(const LogLevel &ll = LogLevel::Warning, bool printRelativeTimestamp = false)
 	{
 		_log_level = ll;
-		_basetimestamp = std::chrono::high_resolution_clock::now();
+		_basetimestamp = std::chrono::system_clock::now();
 	}
 	LogLevel _log_level;
 	std::ofstream _fileStream;
-	std::chrono::time_point<std::chrono::steady_clock> _basetimestamp;
+	std::chrono::system_clock::time_point _basetimestamp;
 	std::mutex _mutex;
 	bool _relativeTimestamp = false;
 };

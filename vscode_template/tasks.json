@@ -12,10 +12,10 @@
                 "isDefault": true
             },
             "linux": {
-                "command": "${workspaceFolder}/build_posix/ninja",
+                "command": "${workspaceFolder}/build/ninja",
                 "options": {
                     "cwd": "${workspaceFolder}"
-                },
+                }
             },
             "windows": {
                 "command": "this is just a placeholder",

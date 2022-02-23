@@ -68,7 +68,7 @@ void printQr(const std::string &url)
 #ifdef _WIN32
 	printQr_generic<char>(url, 219); // windows will gladly use an extended ASCII
 #else
-	printQr_generic<wchar>(url); // a posix system needs a real utf8 character
+	printQr_generic<std::string>(url, u8"\u2588"); // a posix system needs a real utf8 character
 #endif
 }
 
