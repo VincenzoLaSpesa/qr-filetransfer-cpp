@@ -9,6 +9,22 @@
 #include <iomanip>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
+
+namespace {
+int localtime_crossplatform( struct tm* const tmDest,  time_t const* const sourceTime)
+{ //@TODO use some modern c++ stuff, not this horrible workaround
+#ifdef _WIN32
+	return localtime_s(tmDest, sourceTime);
+#else
+	//mock the windows one from posix
+	localtime_r(sourceTime, tmDest);
+	if(tmDest)
+		return 0;
+	return 22; 
+#endif
+}
+}
 
 enum class LogLevel
 {
@@ -19,10 +35,6 @@ enum class LogLevel
 	Trace
 };
 
-/**
- * @brief A template-free wrapper of restinio::ostream_logger_t<std::mutex>.
- * Allows multiple logger to write to the same logging channel with different level of verbosity
- */
 class Logger
 {
   public:
@@ -125,15 +137,17 @@ class Logger
 		if (printTimestamp)
 			if (_relativeTimestamp)
 			{
-				const auto now = std::chrono::high_resolution_clock::now();
-				const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(now - _basetimestamp).count();
+				const auto now = std::chrono::system_clock::now();
+				const auto delta = now - _basetimestamp;
+				const double elapsed_time_s = 0.001 * std::chrono::duration<double, std::milli>(delta).count();
 				ss << elapsed_time_s << '\t';
 			}
 			else
 			{
 				const auto t = std::time(nullptr);
-				const auto tm = *std::localtime(&t);
-				ss << std::put_time(&tm, "%FT%TZ") << '\t';
+				tm localtime;
+				localtime_crossplatform(&localtime, &t);
+				ss << std::put_time(&localtime, "%FT%TZ") << '\t';
 			}
 		if (header && strlen(header) > 0)
 			ss << header << '\t';
@@ -141,11 +155,14 @@ class Logger
 			ss << message << '\t';
 		ss << std::endl;
 
-		std::unique_lock<std::mutex> lock(_mutex);
+		
+		{
+			std::unique_lock<std::mutex> lock(_mutex);
 
-		std::cout << ss.str();
-		if (_fileStream.is_open() && _fileStream.good())
-			_fileStream << ss.str();
+			std::cout << ss.str();
+			if (_fileStream.is_open() && _fileStream.good())
+				_fileStream << ss.str();
+		}
 	}
 	void logText(const char *header, const std::string message, bool printTimestamp = false)
 	{
@@ -155,11 +172,11 @@ class Logger
 	void setup(const LogLevel &ll = LogLevel::Warning, bool printRelativeTimestamp = false)
 	{
 		_log_level = ll;
-		_basetimestamp = std::chrono::high_resolution_clock::now();
+		_basetimestamp = std::chrono::system_clock::now();
 	}
 	LogLevel _log_level;
 	std::ofstream _fileStream;
-	std::chrono::_V2::system_clock::time_point _basetimestamp;
+	std::chrono::system_clock::time_point _basetimestamp;
 	std::mutex _mutex;
 	bool _relativeTimestamp = false;
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <httplib.h>
 #include <windows.h>
 #include <iphlpapi.h>
 #include <stdio.h>
