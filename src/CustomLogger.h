@@ -19,10 +19,6 @@ enum class LogLevel
 	Trace
 };
 
-/**
- * @brief A template-free wrapper of restinio::ostream_logger_t<std::mutex>.
- * Allows multiple logger to write to the same logging channel with different level of verbosity
- */
 class Logger
 {
   public:
@@ -132,8 +128,9 @@ class Logger
 			else
 			{
 				const auto t = std::time(nullptr);
-				const auto tm = *std::localtime(&t);
-				ss << std::put_time(&tm, "%FT%TZ") << '\t';
+				tm localtime;
+				localtime_s(&localtime, &t);
+				ss << std::put_time(&localtime, "%FT%TZ") << '\t';
 			}
 		if (header && strlen(header) > 0)
 			ss << header << '\t';
@@ -141,11 +138,14 @@ class Logger
 			ss << message << '\t';
 		ss << std::endl;
 
-		std::unique_lock<std::mutex> lock(_mutex);
+		
+		{
+			std::unique_lock<std::mutex> lock(_mutex);
 
-		std::cout << ss.str();
-		if (_fileStream.is_open() && _fileStream.good())
-			_fileStream << ss.str();
+			std::cout << ss.str();
+			if (_fileStream.is_open() && _fileStream.good())
+				_fileStream << ss.str();
+		}
 	}
 	void logText(const char *header, const std::string message, bool printTimestamp = false)
 	{
@@ -159,7 +159,7 @@ class Logger
 	}
 	LogLevel _log_level;
 	std::ofstream _fileStream;
-	std::chrono::_V2::system_clock::time_point _basetimestamp;
+	std::chrono::time_point<std::chrono::steady_clock> _basetimestamp;
 	std::mutex _mutex;
 	bool _relativeTimestamp = false;
 };

@@ -2,7 +2,7 @@
 
 Transfer files over Wi-Fi from your computer to a mobile device by scanning a QR code.
 
-This repository is inspired by [Claudio d'Angelis's qr-filetransfer](https://github.com/claudiodangelis/qr-filetransfer), but also adds a simple gui and it can serve entire folders without zipping them to a single file.
+This repository is inspired by [Claudio d'Angelis's qr-filetransfer](https://github.com/claudiodangelis/qr-filetransfer).
 
 ## State of the project:
 
@@ -16,8 +16,7 @@ This is absolutely a work in progress.
 -   Specify a custom port   
 -   Interface names
 
-### TODO ( in order of importance)
--   Serve an entire folder (recursively)
+### TODO 
 -   Store/load settings
 
 
@@ -32,18 +31,8 @@ The project depends on:
 - taywee::args (command line arguments parsing) https://github.com/Taywee/args
 
 You can install the dependencies in different ways, the suggested way is using Conan, but vcpkg should work as well.
-With conan it's just:
 
-    set TARGET="Visual Studio 15 2017"
-    mkdir build_folder
-    cd build_folder
-    conan install .. --build=missing
-    cd ..
-
-    cmake -S . -B .\build_folder\ -G %TARGET% -A x64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCONAN_TOOLCHAIN_FOLDER:STRING=build_folder
-    cmake --build .\build_folder --config Debug 
-
-where `TARGET` is the kind of makefile you want to generate. If you omit it, most likely it will try to build a standard unix makefile.
+For conan just take a look at `build.sh` for posix systems or `build.bat` for windows.
 
 ### But I'm lazy! give me the binary!
     TODO
