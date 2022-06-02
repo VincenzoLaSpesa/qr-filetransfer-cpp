@@ -15,7 +15,7 @@ namespace QrFileTransfer
 	{
 	  public:
 		Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &virtual_path = "", bool keep_alive = false,
-		       bool allow_upload = false, bool verbose = false);
+		       bool allow_upload = false, bool verbose = false, bool use_bootstrap = false);
 		bool WaitForStartup(int timeout_seconds = 5);
 		void Wait();
 		void Start(bool waitForStartup = true, bool WaitForExit = false);
@@ -53,6 +53,7 @@ namespace QrFileTransfer
 		bool keep_alive_ = false;
 		bool stopping_ = false;
 		bool allow_upload_ = false;
+		bool use_bootstrap_ = false;
 		std::atomic<int> pending_ = 0;
 		std::string server_address_;
 		unsigned short server_port_ = 8080;

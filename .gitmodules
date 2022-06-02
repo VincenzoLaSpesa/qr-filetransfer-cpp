@@ -1,0 +1,3 @@
+[submodule "src/src/picohash"]
+	path = src/src/picohash
+	url = https://github.com/VincenzoLaSpesa/picohash

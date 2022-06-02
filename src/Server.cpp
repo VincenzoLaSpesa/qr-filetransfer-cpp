@@ -7,9 +7,14 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
+#include <sstream>
 #include <fmt/printf.h>
-//#include <restinio/helpers/file_upload.hpp>
-//https://github.com/yhirose/cpp-httplib
+
+
+namespace picohash
+{
+	#include "./picohash/picohash.h"
+}
 
 size_t filesize(const std::string &filename)
 {
@@ -45,6 +50,10 @@ struct Handlers
 	static bool http_post_upload(const httplib::Request &req, httplib::Response &res, const httplib::ContentReader &content_reader, QrFileTransfer::Server *caller)
 	{
 		using namespace httplib;
+		picohash::picohash_ctx_t ctx;
+
+		picohash::picohash_init_md5(&ctx);
+
 		if (req.is_multipart_form_data())
 		{
 			// NOTE: `content_reader` is blocking until every form data field is read
@@ -63,15 +72,21 @@ struct Handlers
 			    [&](const char *data, size_t data_length) {
 				    if (! datafile.is_open() || ! datafile.good())
 					    return false;
+				    picohash::picohash_update(&ctx, data, data_length);
 				    datafile.write(data, data_length);
 				    return true;
 			    });
 
 			if (datafile.good())
 			{
-				double mb = (float) datafile.tellp() / (1024 * 1024);
-
-				const std::string message = fmt::format("Done, the file should be long {0} bytes, or {1} Mb\n", datafile.tellp(), mb);
+				float mb = roundf(datafile.tellp() / (1024 * 1024 / 1000))/1000;
+				std::stringstream ss{};
+				uint8_t digest[16];
+				picohash::picohash_final(&ctx, digest);
+				ss << std::setfill('0') << std::setw(2) << std::hex;
+				for (int i = 0; i < 16; i++)
+					ss << std::setw(2) << (int) digest[i];
+				const std::string message = fmt::format("Done,\n the file should be {0} bytes long, or {1} Mb\n md5 of file is {2}", datafile.tellp(), mb, ss.str());
 				const std::string static_html = fmt::format(html_stub, message);
 				res.set_content(static_html, "text/html; charset=utf-8");
 				caller->GetLogger().Trace(message);
@@ -143,6 +158,13 @@ void QrFileTransfer::Server::setup_routes(const std::string &served_path, const 
 {
 	using namespace httplib;
 	std::string path;
+	std::string css_path;
+	if (use_bootstrap_)
+		css_path = "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css' rel='stylesheet' "
+		           "integrity='sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor' crossorigin='anonymous'>";
+	else
+		css_path = "<!-- bootstrap was disabled in the config -->";
+
 	if (randomized_path.size() > 0)
 		path.append(randomized_path);
 	else
@@ -153,7 +175,7 @@ void QrFileTransfer::Server::setup_routes(const std::string &served_path, const 
 	if (allow_upload_)
 	{
 		logger_.Info(fmt::sprintf("%s:%d : Upload allowed on %s \n", __FILE__, __LINE__, path));
-		static std::string static_html = fmt::format(html, randomized_path);
+		static std::string static_html = fmt::format(html, randomized_path, css_path);
 
 		server_.Get("/" + path, [](const Request & /*req*/, Response &res) { res.set_content(static_html, "text/html; charset=utf-8"); });
 
@@ -176,7 +198,7 @@ void QrFileTransfer::Server::runner_main()
 }
 
 QrFileTransfer::Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload,
-                               bool verbose)
+                               bool verbose, bool use_bootstrap)
 {
 	keep_alive_ = keep_alive;
 	allow_upload_ = allow_upload;

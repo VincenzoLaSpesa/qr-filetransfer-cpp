@@ -2,6 +2,7 @@
 pushd ..
 set ABS_PATH=%CD%
 popd
+set BASE_PATH=%CD%
 
 set TOOLCHAIN=D:\Codice\vcpkg\scripts\buildsystems\vcpkg.cmake
 set TARGET1="Visual Studio 16 2019"
@@ -15,6 +16,12 @@ cd build_2019
 conan install .. --build=missing --profile=../conan_profiles/vs2019_x64.profile
 conan install .. --build=missing
 cd ..
+
+cd src
+git clone https://github.com/VincenzoLaSpesa/picohash
+cd picohash
+git pull
+cd %BASE_PATH%
 
 cmake -S . -B .\build_2019\ -G %TARGET1% -A x64 -DCMAKE_BUILD_TYPE=Debug -DCONAN_TOOLCHAIN_FOLDER:STRING=build_2019
 cmake --build .\build_2019 --config Debug 

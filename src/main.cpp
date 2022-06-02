@@ -85,6 +85,7 @@ int main(int argc, char **argv) {
     args::Flag keep(group, "keep-alive", "keeps server alive, won't shut it down after transfer", {'k', "keep-alive"});
     args::Flag receive(group, "receive", "allows the client to send files", {'r', "receive"});
     args::Flag verbose(group, "verbose", "print more status messages", {'v', "verbose"});
+	args::Flag themed(group, "themed", "use bootstrap for a better form", {'t', "themed"});
     args::Positional<std::string> filename(parser, "filename", "file to serve");
     try {
         parser.ParseCLI(argc, argv);
