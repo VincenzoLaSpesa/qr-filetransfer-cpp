@@ -23,5 +23,5 @@ cd picohash
 git pull
 cd %BASE_PATH%
 
-cmake -S . -B .\build_2019\ -G %TARGET1% -A x64 -DCMAKE_BUILD_TYPE=Debug -DCONAN_TOOLCHAIN_FOLDER:STRING=build_2019
-cmake --build .\build_2019 --config Debug 
+cmake -S . -B .\build_2019\ -G %TARGET1% -A x64 -DCMAKE_BUILD_TYPE=Release -DCONAN_TOOLCHAIN_FOLDER:STRING=build_2019 -DCONAN_DISABLE_CHECK_COMPILER:BOOL=True
+cmake --build .\build_2019 --config Release
