@@ -30,7 +30,7 @@ jobs:
     - name: Install dependencies with Conan
       run: | 
          echo "${{ steps.conan.outputs.version }}"
-         cd ${{github.workspace}}/build && conan install .. --build=missing
+         mkdir cd ${{github.workspace}}/build && cd ${{github.workspace}}/build && conan install .. --build=missing
     - name: Configure CMake
       run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Ninja -DCONAN_TOOLCHAIN_FOLDER:STRING=${{github.workspace}}/build -DCMAKE_EXPORT_COMPILE_COMMANDS=True
 
