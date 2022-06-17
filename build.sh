@@ -10,7 +10,7 @@ conan remote add conancenter "https://center.conan.io" False
 mkdir ${BUILD_FOLDER}
 cd ${BUILD_FOLDER}
 conan install .. --build=missing
-conan install .. --build=missing --profile=../conan_profiles/gcc10_x64_linux.profile
+#conan install .. --build=missing --profile=../conan_profiles/gcc10_x64_linux.profile
 cd ..
 
 ABS_PATH=$(pwd)
@@ -22,8 +22,7 @@ cd ${ABS_PATH}
 
 
 cmake -S . -B ./$BUILD_FOLDER/ -G Ninja -DCONAN_TOOLCHAIN_FOLDER:STRING=$BUILD_FOLDER -DCMAKE_EXPORT_COMPILE_COMMANDS=True
-mkdir .vscode
-cp -r ./vscode_template/* ./.vscode/
+mkdir .vscode && cp -r ./vscode_template/* ./.vscode/
 
 #cmake -S . -B ./$BUILD_FOLDER/ -DCONAN_TOOLCHAIN_FOLDER:STRING=$BUILD_FOLDER
 cmake --build ./$BUILD_FOLDER
