@@ -18,10 +18,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Checkout submodules
-      uses: textbook/git-checkout-submodule-action@master    
-    
+      with:
+        submodules: recursive
+        
     - name: Install Ninja
       id: ninja
       uses: seanmiddleditch/gha-setup-ninja@master
