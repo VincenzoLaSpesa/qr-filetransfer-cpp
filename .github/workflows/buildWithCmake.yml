@@ -32,7 +32,7 @@ jobs:
          echo "${{ steps.conan.outputs.version }}"
          conan install ${{github.workspace}} --build=missing
     - name: Configure CMake
-      run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Ninja -DCONAN_TOOLCHAIN_FOLDER:STRING=${{github.workspace}} -DCMAKE_EXPORT_COMPILE_COMMANDS=True
+      run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Ninja -DCONAN_TOOLCHAIN_FOLDER:STRING=${{github.workspace}}/build -DCMAKE_EXPORT_COMPILE_COMMANDS=True
 
     - name: Build
       # Build your program with the given configuration
