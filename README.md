@@ -30,7 +30,7 @@ Most QR apps can detect URLs in decoded text and act accordingly (i.e. open the 
 
     TODO
 
-## Install
+## How to build
 
 The project is buildable with CMake from both linux and windows.
 The project depends on:
@@ -41,11 +41,32 @@ The project depends on:
 - taywee::args (command line arguments parsing) https://github.com/Taywee/args
 - picohash (md5 hashing, **not packaged** ) https://github.com/kazuho/picohash forked into https://github.com/VincenzoLaSpesa/picohash
 
-picohash has no package both in conan and vcpkg, so it's included as a subrepository.
+picohash has no package both in conan and vcpkg, so it's included as a subrepository, remember to **DO A RECURSIVE CHECKOUT**.
 
-You can install the other dependencies in different ways, the suggested way is using Conan, but vcpkg should work as well.
+You can install the other dependencies in different ways, the suggested way is using Conan.
 
-For conan just take a look at `build.sh` for Posix systems or `build.bat` for windows.
+The project can be compiled both with Meson and CMake
+
+### Meson + Conan2
+the scripts `build_mason.ps1` and `build_mason.sh` can be used for downloading the dependencies and compile the project. The output will be in ./output
+
+#### On Windows
+Make sure that:
+-   You have VisualStudio, or at least the compiler of visual studio installed
+-   You have Meson installed
+-   You have pkgconfiglite installed ( the easiest way is from choco)
+-   You have Conan installed ( and configured)
+-   You have CMake installed ( yes, it is needed anyway, Meson is just way easier to set up)
+
+#### On Linux
+Make sure that:
+-   You have the compiler suite installed
+-   You have Meson installed
+-   You have Conan installed ( and configured)
+-   You have CMake installed ( yes, it is needed anyway, Meson is just way easier to set up)
+
+### What about cross compiling?
+Either setup Conan (and Meson, if you use it) to match the building architecture, or use dockcross https://github.com/dockcross/dockcross
 
 ### But I'm lazy! give me the binary!
     TODO
@@ -53,6 +74,7 @@ For conan just take a look at `build.sh` for Posix systems or `build.bat` for wi
 ## State of the project:
 
 This is absolutely a work in progress.
+It mostly works, but i use it for experimenting with building pipelines.
 
 ### Completed features
 -   Serve a single file and close ( desktop to mobile)
