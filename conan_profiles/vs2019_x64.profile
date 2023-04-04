@@ -5,7 +5,7 @@
 	arch_build=x86_64
 	compiler=Visual Studio
 	compiler.version=16
-	build_type=Debug
+	build_type=Release
 [options]
 [conf]
 [build_requires]
