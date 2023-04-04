@@ -1,12 +1,13 @@
 [requires]
-	fmt/8.1.1
+	fmt/9.1.0
 	libqrencode/4.1.1
-	taywee-args/6.3.0
-	cpp-httplib/0.10.1
+	taywee-args/6.4.6
+	cpp-httplib/0.12.1
 
 [options]
-	fmt:header_only=True
+	fmt/*:header_only=True
+	taywee-args/*:header_only=True
 
 [generators]
-	cmake
-	cmake_find_package
+	MesonToolchain
+	PkgConfigDeps
