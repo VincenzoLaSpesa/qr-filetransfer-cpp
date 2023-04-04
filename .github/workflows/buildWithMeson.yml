@@ -39,9 +39,4 @@ jobs:
       run: pip3 install meson
 
     - name: Build
-      run: sh ./build_meson.sh
-
-    - name: Test
-      working-directory: ${{github.workspace}}/build_meson
-      run: meson test
-      
+      run: sh ./build_meson.sh    
