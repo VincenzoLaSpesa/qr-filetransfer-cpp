@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required(VERSION 3.25)
 
 project(qr-filetransfer_cpp LANGUAGES C CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
@@ -7,15 +7,6 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 	MESSAGE(STATUS "No toolchain is defined, this could cause issues with vcpkg")
 else()
 	MESSAGE(STATUS "Using toolchain in ${CMAKE_TOOLCHAIN_FILE} ")
-endif()
-
-if(EXISTS "ConanWrapper.cmake")
-	include("ConanWrapper.cmake")
-elseif(EXISTS "${PROJECT_SOURCE_DIR}/ConanWrapper.cmake")
-  MESSAGE(STATUS "Including ${PROJECT_SOURCE_DIR}/ConanWrapper.cmake")  
-  include("${PROJECT_SOURCE_DIR}/ConanWrapper.cmake")
-else()
-	MESSAGE( STATUS "Conan is not used")
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)

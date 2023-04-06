@@ -11,3 +11,5 @@
 [generators]
 	MesonToolchain
 	PkgConfigDeps
+	CMakeDeps
+	CMakeToolchain	

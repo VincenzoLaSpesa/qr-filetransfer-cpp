@@ -50,20 +50,33 @@ The project can be compiled both with Meson and CMake
 ### Meson + Conan2
 the scripts `build_mason.ps1` and `build_mason.sh` can be used for downloading the dependencies and compile the project. The output will be in ./output
 
+#### On Linux
+Make sure that:
+-   You have a compiler suite installed
+-   You have Meson installed
+-   You have Conan installed ( and configured)
+-   You have CMake installed ( yes, it is needed anyway by some dependencies)
+
 #### On Windows
+Same as linux, plus:
 Make sure that:
 -   You have VisualStudio, or at least the compiler of visual studio installed
--   You have Meson installed
 -   You have pkgconfiglite installed ( the easiest way is from choco)
--   You have Conan installed ( and configured)
--   You have CMake installed ( yes, it is needed anyway, Meson is just way easier to set up)
+
+### CMake + Conan2
+the scripts `build_cmake.ps1` and `build_cmake.sh` can be used for downloading the dependencies and compile the project. The output will be in ./output
 
 #### On Linux
 Make sure that:
--   You have the compiler suite installed
--   You have Meson installed
+-   You have a compiler suite installed
 -   You have Conan installed ( and configured)
--   You have CMake installed ( yes, it is needed anyway, Meson is just way easier to set up)
+-   You have CMake installed
+
+#### On Windows
+Same as linux, plus:
+Make sure that:
+-   You have VisualStudio, or at least the compiler of visual studio installed
+
 
 ### What about cross compiling?
 Either setup Conan (and Meson, if you use it) to match the building architecture, or use dockcross https://github.com/dockcross/dockcross

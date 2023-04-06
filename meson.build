@@ -2,8 +2,8 @@ project('qr-filetransfer_cpp', 'cpp')
 src = ['./src/main.cpp', './src/Server.cpp', './src/Server.h', './src/htmldata.hpp', './src/CustomLogger.h', './src/Util.h']
 
 # dependencies will be handled transparently by conan ( hopefully )
-deps = [
-	dependency('fmt', version : '>=0.0.1'),# i trust conan to install only one
+deps = [# i trust conan to install only one version, so i just accept anything from here
+	dependency('fmt', version : '>=0.0.1'),
 	dependency('libqrencode', version : '>=0.0.1'),
 	dependency('args', version : '>=0.0.1'),
 	dependency('cpp-httplib', version : '>=0.0.1')
