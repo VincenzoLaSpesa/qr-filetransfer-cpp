@@ -1,42 +1,28 @@
-TOOLCHAIN="put here a vcpkg toolchain, if you need it"
-BUILD_FOLDER="build"
+#!/bin/sh
 
-export CONAN_REVISIONS_ENABLED=1
+conan install . --output-folder=build_cmake --build=missing
 
-# remove this if you are not behind some very intrusive proxy
-conan remote remove conancenter
-conan remote add conancenter "https://center.conan.io" False
+if [[ ! -d "./build_cmake" ]]
+then
+    echo "Conan din't run properly"
+	exit 1
+fi
 
-mkdir ${BUILD_FOLDER}
-cd ${BUILD_FOLDER}
-conan install .. --build=missing
-#conan install .. --build=missing --profile=../conan_profiles/gcc10_x64_linux.profile
+# Conan might fail and still create the the build_cmake folder, 
+#	but at least we make sure not to pollute the root folder with build files
+
+if [[ ! -d output ]]
+then
+    mkdir output
+fi
+
+echo '**' > ./build_cmake/.gitignore
+echo '**' > ./output/.gitignore
+
+
+cd build_cmake 
+
+cmake .. -DCMAKE_TOOLCHAIN_FILE="./conan_toolchain.cmake" -DCMAKE_BUILD_TYPE=Release
+cmake --build .
+
 cd ..
-
-ABS_PATH=$(pwd)
-cd src
-git clone https://github.com/VincenzoLaSpesa/picohash
-cd picohash
-git pull
-cd ${ABS_PATH}
-
-
-cmake -S . -B ./$BUILD_FOLDER/ -G Ninja -DCONAN_TOOLCHAIN_FOLDER:STRING=$BUILD_FOLDER -DCMAKE_EXPORT_COMPILE_COMMANDS=True
-mkdir .vscode && cp -r ./vscode_template/* ./.vscode/
-
-#cmake -S . -B ./$BUILD_FOLDER/ -DCONAN_TOOLCHAIN_FOLDER:STRING=$BUILD_FOLDER
-cmake --build ./$BUILD_FOLDER
- 
-#mkdir ${BUILD_FOLDER}_eclipse
-#cd ${BUILD_FOLDER}_eclipse
-#conan install .. --build=missing
-#conan install .. --build=missing --profile=../conan_profiles/gcc10_x64_linux.profile
-#cd ..
-#cmake -S . -B ./${BUILD_FOLDER}_eclipse/ -G"Eclipse CDT4 - Ninja" -DCONAN_TOOLCHAIN_FOLDER:STRING=${BUILD_FOLDER}_eclipse
-
-#mkdir ${BUILD_FOLDER}_makefile
-#cd ${BUILD_FOLDER}_makefile
-#conan install .. --build=missing
-#conan install .. --build=missing --profile=../conan_profiles/gcc10_x64_linux.profile
-#cd ..
-#cmake -S . -B ./${BUILD_FOLDER}_makefile/ -DCONAN_TOOLCHAIN_FOLDER:STRING=${BUILD_FOLDER}_makefile
