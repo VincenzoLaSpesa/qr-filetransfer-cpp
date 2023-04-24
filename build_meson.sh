@@ -23,6 +23,6 @@ cd build_meson
 
 meson setup --native-file conan_meson_native.ini .. build_meson_ninja
 cd build_meson_ninja
-meson install --destdir ../../output
+meson install --destdir ../../
 cd ..
 cd ..

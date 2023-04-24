@@ -18,7 +18,7 @@ namespace QrFileTransfer
 		       bool allow_upload = false, bool verbose = false, bool use_bootstrap = false);
 		bool WaitForStartup(int timeout_seconds = 5);
 		void Wait();
-		void Start(bool waitForStartup = true, bool WaitForExit = false);
+		bool Start(bool waitForStartup = true, bool WaitForExit = false);
 		void Stop(bool wait = true);
 		void InitShutdown();
 		int PendingTaskAdd()
@@ -43,10 +43,10 @@ namespace QrFileTransfer
 
 	  private:
 		void setup_routes(const std::string &served_path, const std::string &randomized_path);
-		void runner_main();
+		bool runner_main();
 		httplib::Server server_;
 		std::thread runner_;
-		std::thread _killer;
+		std::thread killer_;
 
 		Logger logger_;
 		bool started_ = false;

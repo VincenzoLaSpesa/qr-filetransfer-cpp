@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
         return -1;
     } catch (const args::Help &) {
         std::cout << parser;
-        return -2;
+        return 0;
     } catch (const args::ParseError &e) {
         std::cerr << e.what() << std::endl;
         std::cerr << parser;
@@ -103,13 +103,13 @@ int main(int argc, char **argv) {
         std::cerr << e.what() << std::endl;
     }
     if (filename) {
-        std::cout << filename.Get() << " will be served" << std::endl;
         file_path = filename.Get();
         if (!std::filesystem::exists(file_path)) {
             const auto abspath = std::filesystem::absolute(file_path);
             std::cerr << "The file '" << abspath << "' does not exist or it's impossible to open" << std::endl;
             return -4;        
 		}
+		std::cout << filename.Get() << " will be served" << std::endl;
     } else {
         std::cerr << "A filename is needed \n";
         std::cout << parser;
@@ -134,8 +134,12 @@ int main(int argc, char **argv) {
     fmt::printf("The served url is -> %s\n", path);
     printQr(path);
     QrFileTransfer::Server server{addr, port, file_path, rand_path, keep.Get(), receive, verbose};
-	server.Start(true);
-    printf("Server is ready\n");
-    server.Wait();
-    return 0;
+	const auto good = server.Start(true);
+	if (good)
+	{
+		printf("Server is ready\n");
+		server.Wait();
+		return 0;
+	}
+	return -4;
 }

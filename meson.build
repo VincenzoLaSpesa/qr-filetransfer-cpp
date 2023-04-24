@@ -9,7 +9,7 @@ deps = [# i trust conan to install only one version, so i just accept anything f
 	dependency('cpp-httplib', version : '>=0.0.1')
 ]
 
-executable('qr-filetransfer', src, dependencies: deps, install : true, install_dir : './output/', cpp_args : '-std=c++17')
+executable('QrFiletransfer', src, dependencies: deps, install : true, install_dir : './output/', cpp_args : '-std=c++17')
 
 
 # IMPORTANT: for making Mason+Conan work on windows you need to install pkgconfiglite and ninja

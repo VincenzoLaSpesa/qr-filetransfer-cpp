@@ -192,9 +192,12 @@ void QrFileTransfer::Server::setup_routes(const std::string &served_path, const 
 	}
 }
 
-void QrFileTransfer::Server::runner_main()
+bool QrFileTransfer::Server::runner_main()
 {
-	server_.listen(server_address_.c_str(), server_port_);
+	const auto good = server_.listen(server_address_.c_str(), server_port_);
+	if (!good)
+		logger_.Error("The server didn't start");
+	return good;
 }
 
 QrFileTransfer::Server::Server(const std::string &addr, unsigned short port, const std::string &served_path, const std::string &randomized_path, bool keep_alive, bool allow_upload,
@@ -228,17 +231,18 @@ void QrFileTransfer::Server::Wait()
 		runner_.join();
 }
 
-void QrFileTransfer::Server::Start(bool waitForStartup, bool WaitForExit)
+bool QrFileTransfer::Server::Start(bool waitForStartup, bool WaitForExit)
 {
 	if (WaitForExit)
 	{
-		runner_main();
+		return runner_main();
 	}
 	else
 	{
 		runner_ = std::thread(&Server::runner_main, this);
 		if (waitForStartup)
 			started_ = WaitForStartup();
+		return server_.is_running();
 	}
 }
 
@@ -262,7 +266,7 @@ void QrFileTransfer::Server::InitShutdown()
 	if (! stopping_)
 	{
 		stopping_ = true;
-		_killer = std::thread([&]() {
+		killer_ = std::thread([&]() {
 			server_.set_pre_routing_handler([&](const auto &req, auto &res) {
 				logger_.Info("Connection refused, the server is shutting down");
 				return httplib::Server::HandlerResponse::Unhandled;
@@ -289,6 +293,6 @@ void QrFileTransfer::Server::InitShutdown()
 QrFileTransfer::Server::~Server()
 {
 	Stop(true);
-	if (_killer.joinable())
-		_killer.join();
+	if (killer_.joinable())
+		killer_.join();
 }
